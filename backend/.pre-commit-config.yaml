@@ -1,0 +1,73 @@
+# Pre-commit hooks run automatically before `git commit`.
+# Install once:  pre-commit install
+# Run manually:  pre-commit run --all-files
+# Update hooks:  pre-commit autoupdate
+
+repos:
+  # ---------- Basic hygiene ----------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: ["--maxkb=2000"]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # ---------- Ruff: lint + format ----------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: ["--fix", "--exit-non-zero-on-fix"]
+        files: ^(src|tests)/
+      - id: ruff-format
+        files: ^(src|tests)/
+
+  # ---------- Mypy (uses project's own mypy config) ----------
+  # The hook runs in an ISOLATED venv, so every import used by the project
+  # must be listed under additional_dependencies — otherwise mypy fails
+  # with import-not-found before checking actual types.
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^src/
+        additional_dependencies:
+          # Web / config
+          - "pydantic>=2.9.0"
+          - "pydantic-settings>=2.5.0"
+          - "email-validator>=2.2.0"
+          - "fastapi>=0.115.0"
+          - "python-multipart>=0.0.12"
+          - "starlette>=0.40.0"
+          # Logging
+          - "structlog>=24.4.0"
+          # Database
+          - "sqlalchemy>=2.0.35"
+          # Kafka
+          - "aiokafka>=0.12.0"
+          # Auth
+          - "pyjwt>=2.10.0"
+          - "passlib[argon2]>=1.7.4"
+          - "argon2-cffi>=23.1.0"
+          - "types-passlib>=1.7.7"
+          # HTTP stubs
+          - "types-requests>=2.32.0"
+          # ML stack (dataset.py, preprocess.py)
+          - "torch>=2.6.0"
+          - "torchvision>=0.21.0"
+          - "numpy>=2.1.0"
+          - "pillow>=11.0.0"
+          - "matplotlib>=3.9.0"
+          - "datasets>=3.1.0"
+          - "huggingface-hub>=0.27.0"
+          # Type stubs
+          - "types-Pillow>=10.2.0"
+        args: ["--config-file=pyproject.toml"]

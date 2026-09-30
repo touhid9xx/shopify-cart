@@ -1,0 +1,54 @@
+# ───── Python ─────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+
+# ───── IDE ─────
+.idea/
+.vscode/
+*.swp
+
+# ───── Git ─────
+.git/
+.gitignore
+.gitattributes
+
+# ───── Environment ─────
+.env
+.env.local
+.env.*.local
+
+# ───── ML artifacts (huge!) ─────
+mlruns/
+data/raw/
+data/processed/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+
+# ───── Logs ─────
+*.log
+logs/
+
+# ───── OS ─────
+.DS_Store
+Thumbs.db
+
+# ───── Docker ─────
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# ───── Docs ─────
+# README.md
+docs/
