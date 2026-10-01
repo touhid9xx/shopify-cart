@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -219,6 +221,19 @@ def create_app() -> FastAPI:
             "kafka": "connected" if ok else "publish_failed",
             "bootstrap": settings.kafka_bootstrap_servers,
         }
+
+    # ------------------------------------------------------------------
+    # Static files — serve uploaded product images
+    # ------------------------------------------------------------------
+    # Served under /static/uploads so the frontend can render
+    # <img src="http://localhost:8000/static/uploads/...">.
+    uploads_dir = Path("data/uploads")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/static/uploads",
+        StaticFiles(directory=str(uploads_dir)),
+        name="uploads",
+    )
 
     return app
 

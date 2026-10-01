@@ -123,9 +123,18 @@ class AugmentedSubset(Dataset[tuple[Tensor, int]]):
 # ----------------------------------------------------------------------
 # Model
 # ----------------------------------------------------------------------
-def build_model(num_classes: int) -> nn.Module:
-    """ResNet-18 with ImageNet weights, replace the final FC."""
-    weights = ResNet18_Weights.IMAGENET1K_V1
+def build_model(num_classes: int, *, pretrained: bool = True) -> nn.Module:
+    """
+    Build a ResNet-18 with the final FC layer replaced.
+
+    Args:
+        num_classes: Number of output classes.
+        pretrained: If True, initialize backbone with ImageNet weights
+                    (requires network access on first run). Set to False
+                    when loading from a saved state_dict — avoids a
+                    pointless download and works in offline containers.
+    """
+    weights = ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
     model: ResNet = resnet18(weights=weights)
     in_features: int = model.fc.in_features
     model.fc = nn.Linear(in_features, num_classes)

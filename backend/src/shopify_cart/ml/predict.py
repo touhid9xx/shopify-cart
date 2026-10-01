@@ -7,6 +7,8 @@ Design:
   - Top-K classification with confidence
   - Loads `best_model.pt` (state_dict) — NOT `mlflow.pytorch.load_model()`,
     which is fragile across torch wheel variants (+cpu vs +cu118 vs +cu124).
+  - Rebuilds the ResNet-18 shell with `pretrained=False` because we load
+    our own weights — no need for ImageNet download inside offline containers.
 """
 
 from __future__ import annotations
@@ -265,8 +267,12 @@ class CategoryPredictor:
             classes = self._load_classes_from_run(run_id)
 
         # ---- Build model + load weights ----
+        # pretrained=False: we load our own state_dict, so fetching
+        # ImageNet weights is unnecessary AND fails in offline containers
+        # (the app container has no outbound internet access to
+        # download.pytorch.org).
         try:
-            model: nn.Module = build_model(num_classes)
+            model: nn.Module = build_model(num_classes, pretrained=False)
             model.load_state_dict(state_dict)
             model.eval()
             model.to(self._device)
