@@ -11,6 +11,8 @@ import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 
 import { useProduct } from "@/hooks/use-products";
 import { formatMoney } from "@/lib/formatters";
+import { resolveImageUrl } from "@/lib/utils";
+
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
@@ -18,6 +20,7 @@ export default function ProductDetailPage() {
   const id = Number(params.id);
 
   const { data: product, isLoading, isError } = useProduct(id);
+  const imageUrl = resolveImageUrl(product?.image_url);
 
   if (isLoading) {
     return (
@@ -56,18 +59,18 @@ export default function ProductDetailPage() {
 
       <div className="grid gap-8 md:grid-cols-2">
         <div className="aspect-square overflow-hidden rounded-lg bg-muted">
-          {product.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <ImageOff className="h-16 w-16 text-muted-foreground" />
-            </div>
-          )}
+            {imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imageUrl}
+                alt={product.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <ImageOff className="h-16 w-16 text-muted-foreground" />
+              </div>
+            )}
         </div>
 
         <div className="space-y-6">

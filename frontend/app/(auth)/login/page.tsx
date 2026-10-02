@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -22,7 +22,43 @@ import { HttpError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth-context";
 import { loginSchema, type LoginInput } from "@/lib/validators";
 
+// ──────────────────────────────────────────────────────────────
+// Page shell — only wraps with Suspense
+// (needed because LoginForm uses useSearchParams)
+// ──────────────────────────────────────────────────────────────
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────
+// Fallback — skeleton matching the form layout
+// ──────────────────────────────────────────────────────────────
+function LoginFallback() {
+  return (
+    <main className="container mx-auto flex min-h-screen items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <div className="h-6 w-24 animate-pulse rounded bg-muted" />
+          <div className="mt-2 h-4 w-56 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="h-10 w-full animate-pulse rounded bg-muted" />
+          <div className="h-10 w-full animate-pulse rounded bg-muted" />
+          <div className="h-10 w-full animate-pulse rounded bg-muted" />
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────
+// The real form — uses useSearchParams
+// ──────────────────────────────────────────────────────────────
+function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") ?? "/products";
