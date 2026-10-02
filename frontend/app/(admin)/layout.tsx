@@ -1,4 +1,6 @@
 import { SiteHeader } from "@/components/layout/site-header";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { AdminGuard } from "@/components/admin/admin-guard";
 
 export default function AdminLayout({
   children,
@@ -8,7 +10,12 @@ export default function AdminLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main className="flex-1 bg-muted/20">{children}</main>
+      <AdminGuard>
+        <div className="flex flex-1">
+          <AdminSidebar />
+          <main className="flex-1 bg-muted/10">{children}</main>
+        </div>
+      </AdminGuard>
     </div>
   );
 }

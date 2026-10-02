@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import os
 import threading
 import time
 from collections import OrderedDict
@@ -35,7 +36,6 @@ from shopify_cart.logging_config import get_logger
 from shopify_cart.ml.dataset import IMAGE_SIZE, IMAGENET_MEAN, IMAGENET_STD
 from shopify_cart.ml.train import build_model
 
-import os
 os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "2")
 os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "0")
 

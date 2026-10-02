@@ -66,3 +66,4 @@ Thumbs.db
 test_output*.txt
 *.test-output
 explore_output*.txt
+*.sql

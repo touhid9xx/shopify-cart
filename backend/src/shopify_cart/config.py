@@ -68,7 +68,6 @@ class Settings(BaseSettings):
     )
     kafka_enabled: bool = Field(default=False, alias="KAFKA_ENABLED")
 
-
     # ── MLflow ─────────────────────────────────────────
     mlflow_tracking_uri: str = Field(default="http://localhost:5000", alias="MLFLOW_TRACKING_URI")
     mlflow_experiment_name: str = Field(

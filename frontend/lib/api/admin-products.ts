@@ -1,58 +1,51 @@
 import { api } from "./client";
 import type {
   AutoCategorizeResponse,
+  Page,
   Product,
   ProductCreatePayload,
   ProductUpdatePayload,
+  ProductWithStock,
 } from "@/lib/api-types";
 
 export const adminProductsApi = {
+  /** Create a new product (admin) */
   create: (payload: ProductCreatePayload) =>
     api.post<Product>("/admin/products", payload),
 
+  /** Update an existing product (admin) */
   update: (id: number, payload: ProductUpdatePayload) =>
     api.put<Product>(`/admin/products/${id}`, payload),
 
-  delete: (id: number, hard = false) =>
-    api.delete<void>(`/admin/products/${id}?hard=${hard}`),
+  /** Delete a product (admin) */
+  delete: (id: number) => api.delete<void>(`/admin/products/${id}`),
 
   /**
-   * Upload + auto-categorize.
-   *
-   * @param file - image file (JPEG/PNG/WebP, ≤10MB)
-   * @param name - product name
-   * @param price - string decimal e.g. "19.99"
-   * @param opts - optional form fields
+   * Upload an image → ML auto-categorize → create product.
+   * Returns either { status: "created", ... } or
+   *               { status: "needs_review", ... }
    */
-  uploadAndClassify: (
-    file: File,
-    name: string,
-    price: string,
-    opts?: {
-      sku?: string;
-      description?: string;
-      image_url?: string;
-      location?: string;
-      initial_quantity?: number;
-      low_stock_threshold?: number;
-      force_category_slug?: string;
-    }
-  ): Promise<AutoCategorizeResponse> => {
+  uploadImage: async (params: {
+    image: File;
+    name: string;
+    price: string;
+    sku?: string;
+    description?: string;
+    category_id?: number;
+    is_active?: boolean;
+  }): Promise<AutoCategorizeResponse> => {
     const form = new FormData();
-    form.append("image", file);
-    form.append("name", name);
-    form.append("price", price);
-    if (opts?.sku) form.append("sku", opts.sku);
-    if (opts?.description) form.append("description", opts.description);
-    if (opts?.image_url) form.append("image_url", opts.image_url);
-    if (opts?.location) form.append("location", opts.location);
-    if (opts?.initial_quantity !== undefined)
-      form.append("initial_quantity", String(opts.initial_quantity));
-    if (opts?.low_stock_threshold !== undefined)
-      form.append("low_stock_threshold", String(opts.low_stock_threshold));
-    if (opts?.force_category_slug)
-      form.append("force_category_slug", opts.force_category_slug);
-
+    form.append("image", params.image);
+    form.append("name", params.name);
+    form.append("price", params.price);
+    if (params.sku) form.append("sku", params.sku);
+    if (params.description) form.append("description", params.description);
+    if (params.category_id != null) {
+      form.append("category_id", String(params.category_id));
+    }
+    if (params.is_active != null) {
+      form.append("is_active", String(params.is_active));
+    }
     return api.upload<AutoCategorizeResponse>("/admin/products/upload", form);
   },
 };

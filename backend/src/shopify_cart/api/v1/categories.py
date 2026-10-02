@@ -38,9 +38,7 @@ def list_categories(
 def category_tree(db: DbSession) -> list[CategoryTreeNode]:
     """Return full hierarchy as a nested tree of roots."""
 
-    all_cats = list(
-        db.execute(select(Category).order_by(Category.name.asc())).scalars().all()
-    )
+    all_cats = list(db.execute(select(Category).order_by(Category.name.asc())).scalars().all())
 
     # ── Step 1: create a fresh node per category — no model_validate ──
     by_id: dict[int, CategoryTreeNode] = {}
@@ -52,7 +50,7 @@ def category_tree(db: DbSession) -> list[CategoryTreeNode]:
             parent_id=c.parent_id,
             created_at=c.created_at,
             updated_at=c.updated_at,
-            children=[],   # ← explicit — never shared, never cached
+            children=[],  # ← explicit — never shared, never cached
         )
 
     # ── Step 2: attach children exactly once ──

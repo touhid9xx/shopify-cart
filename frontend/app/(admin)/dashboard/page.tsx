@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto max-w-6xl px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Admin dashboard</h1>
         <p className="mt-2 text-muted-foreground">
@@ -34,14 +34,15 @@ export default function DashboardPage() {
           title="Upload product"
           description="Upload an image — the ML classifier auto-assigns the category."
           href="/dashboard/products/new"
-          cta="Upload"
+          cta="Upload now"
+          highlight
         />
         <DashboardCard
           icon={<Package className="h-6 w-6" />}
           title="Products"
           description="Browse, edit, and manage your product catalog."
           href="/dashboard/products"
-          cta="Manage"
+          cta="Manage products"
         />
         <DashboardCard
           icon={<ShoppingCart className="h-6 w-6" />}
@@ -55,7 +56,7 @@ export default function DashboardPage() {
           title="Inventory"
           description="Monitor stock levels and reorder suggestions."
           href="/dashboard/inventory"
-          cta="Monitor"
+          cta="Monitor inventory"
         />
         <DashboardCard
           icon={<BarChart3 className="h-6 w-6" />}
@@ -82,17 +83,31 @@ function DashboardCard({
   description,
   href,
   cta,
+  highlight = false,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   href: string;
   cta: string;
+  highlight?: boolean;
 }) {
   return (
-    <Card className="flex flex-col">
+    <Card
+      className={cn(
+        "flex flex-col",
+        highlight && "border-primary/50 bg-primary/5",
+      )}
+    >
       <CardHeader>
-        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <div
+          className={cn(
+            "mb-2 flex h-10 w-10 items-center justify-center rounded-lg",
+            highlight
+              ? "bg-primary text-primary-foreground"
+              : "bg-primary/10 text-primary",
+          )}
+        >
           {icon}
         </div>
         <CardTitle>{title}</CardTitle>

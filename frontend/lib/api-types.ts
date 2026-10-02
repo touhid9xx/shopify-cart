@@ -63,14 +63,21 @@ export interface CategoryTreeNode extends Category {
   children: CategoryTreeNode[];
 }
 
+export interface CategoryRead {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 // ───── Product ─────
 export interface Product {
-  id: number;
+   id: number;
   name: string;
   sku: string;
   description: string | null;
-  price: string; // Decimal as string
+  price: string;
   category_id: number | null;
+  category: CategoryRead | null;
   image_url: string | null;
   is_active: boolean;
   created_at: string;

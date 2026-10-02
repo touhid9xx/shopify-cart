@@ -9,12 +9,14 @@ interface NavItem {
   href: string;
   label: string;
   authOnly?: boolean;
+  adminOnly?: boolean;   // ← NEW
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
   { href: "/orders", label: "Orders", authOnly: true },
+  { href: "/dashboard", label: "Dashboard", adminOnly: true },   // ← CHANGED
 ];
 
 interface Props {
@@ -24,10 +26,6 @@ interface Props {
   onNavigate?: () => void;
 }
 
-/**
- * Primary navigation links.
- * Active state matches exact path or path prefix.
- */
 export function SiteNav({
   isAuthenticated = false,
   isAdmin = false,
@@ -36,7 +34,9 @@ export function SiteNav({
 }: Props) {
   const pathname = usePathname();
 
+  // ── Filter by auth + admin rules ──
   const items = NAV_ITEMS.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false;
     if (item.authOnly && !isAuthenticated) return false;
     return true;
   });
