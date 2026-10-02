@@ -6,12 +6,6 @@ interface Props {
   showShipping?: boolean;
 }
 
-/**
- * Display subtotal, shipping, tax and total for a cart.
- *
- * NOTE: shipping / tax are placeholders (0) until the checkout
- * service adds them. They are shown so the UI shape is final.
- */
 export function CartSummary({ cart, showShipping = true }: Props) {
   const subtotal = cart.total_amount;
   const shipping = "0.00";
@@ -23,7 +17,7 @@ export function CartSummary({ cart, showShipping = true }: Props) {
   ).toFixed(2);
 
   return (
-    <div className="space-y-2 py-4 text-sm">
+    <div className="space-y-2 text-sm">
       <div className="flex justify-between">
         <span className="text-muted-foreground">
           Subtotal ({cart.total_quantity} item
