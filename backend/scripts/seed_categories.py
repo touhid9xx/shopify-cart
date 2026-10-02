@@ -1,3 +1,5 @@
+# backend/scripts/seed_categories.py
+
 """Seed default product categories.
 
 Idempotent — running twice does not duplicate rows.

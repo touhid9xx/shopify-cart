@@ -37,10 +37,25 @@ def list_categories(
 @router.get("/tree", response_model=list[CategoryTreeNode])
 def category_tree(db: DbSession) -> list[CategoryTreeNode]:
     """Return full hierarchy as a nested tree of roots."""
-    all_cats = list(db.execute(select(Category).order_by(Category.name.asc())).scalars().all())
-    by_id: dict[int, CategoryTreeNode] = {
-        c.id: CategoryTreeNode.model_validate(c) for c in all_cats
-    }
+
+    all_cats = list(
+        db.execute(select(Category).order_by(Category.name.asc())).scalars().all()
+    )
+
+    # ── Step 1: create a fresh node per category — no model_validate ──
+    by_id: dict[int, CategoryTreeNode] = {}
+    for c in all_cats:
+        by_id[c.id] = CategoryTreeNode(
+            id=c.id,
+            name=c.name,
+            slug=c.slug,
+            parent_id=c.parent_id,
+            created_at=c.created_at,
+            updated_at=c.updated_at,
+            children=[],   # ← explicit — never shared, never cached
+        )
+
+    # ── Step 2: attach children exactly once ──
     roots: list[CategoryTreeNode] = []
     for c in all_cats:
         node = by_id[c.id]
@@ -50,6 +65,7 @@ def category_tree(db: DbSession) -> list[CategoryTreeNode]:
             parent = by_id.get(c.parent_id)
             if parent is not None:
                 parent.children.append(node)
+
     return roots
 
 

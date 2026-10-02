@@ -1,3 +1,4 @@
+# config.py
 """Application configuration using pydantic-settings.
 
 All runtime configuration is loaded here. Precedence (highest → lowest):
@@ -30,7 +31,7 @@ class Settings(BaseSettings):
     )
 
     # ── App ────────────────────────────────────────────
-    app_name: str = Field(default="Shopify Cart", alias="APP_NAME")
+    app_name: str = Field(default="ShopifyCart", alias="APP_NAME")
     app_env: str = Field(default="development", alias="APP_ENV")
     app_debug: bool = Field(default=True, alias="APP_DEBUG")
     app_host: str = Field(default="0.0.0.0", alias="APP_HOST")
@@ -65,7 +66,8 @@ class Settings(BaseSettings):
     kafka_consumer_group: str = Field(
         default="shopify-cart-consumers", alias="KAFKA_CONSUMER_GROUP"
     )
-    kafka_enabled: bool = Field(default=True, alias="KAFKA_ENABLED")
+    kafka_enabled: bool = Field(default=False, alias="KAFKA_ENABLED")
+
 
     # ── MLflow ─────────────────────────────────────────
     mlflow_tracking_uri: str = Field(default="http://localhost:5000", alias="MLFLOW_TRACKING_URI")
@@ -77,6 +79,10 @@ class Settings(BaseSettings):
         default="shopify-category-classifier",
         alias="MLFLOW_REGISTERED_MODEL_NAME",
     )
+    # ── নতুন যোগ ──────────────────────────────────────
+    ml_enabled: bool = Field(default=False, alias="ML_ENABLED")
+    mlflow_request_timeout_seconds: int = Field(default=2, alias="MLFLOW_REQUEST_TIMEOUT_SECONDS")
+    mlflow_max_retries: int = Field(default=0, alias="MLFLOW_MAX_RETRIES")
 
     # ── Model ──────────────────────────────────────────
     model_path: str = Field(default="models/category_classifier.pt", alias="MODEL_PATH")

@@ -1,3 +1,5 @@
+# main.py
+
 """FastAPI application entry point."""
 
 from __future__ import annotations
@@ -41,26 +43,41 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         version=settings.app_version,
     )
 
-    # Kafka producer
+    # ---- Kafka producer (non-blocking) ----
     producer = KafkaProducer(settings)
-    await producer.start()
+    try:
+        await producer.start()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("kafka_producer_start_failed", error=str(exc))
     app.state.kafka_producer = producer
 
-    # Kafka consumer (background task)
+    # ---- Kafka consumer (non-blocking) ----
     consumer = build_default_consumer(settings)
-    await consumer.start()
-    consumer.spawn()
+    try:
+        await consumer.start()
+        consumer.spawn()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("kafka_consumer_start_failed", error=str(exc))
     app.state.kafka_consumer = consumer
 
-    # ML predictor — startup load (fail-safe)
-    predictor = load_predictor_at_startup()
-    app.state.predictor = predictor
+    # ---- ML predictor: শুধু ml_enabled=True হলে load হবে ----
+    if settings.ml_enabled:
+        try:
+            predictor = load_predictor_at_startup()
+            app.state.predictor = predictor
+            logger.info("predictor_loaded", is_loaded=predictor.is_loaded)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("predictor_load_failed", error=str(exc))
+            app.state.predictor = None
+    else:
+        logger.info("predictor_disabled", reason="ML_ENABLED=false")
+        app.state.predictor = None
 
     logger.info(
         "app_started",
         kafka_producer_connected=producer.is_connected,
         kafka_consumer_connected=consumer.is_connected,
-        predictor_loaded=predictor.is_loaded,
+        predictor_enabled=settings.ml_enabled,
     )
 
     try:
@@ -68,8 +85,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         # ---- Shutdown ----
         logger.info("app_stopping")
-        await app.state.kafka_consumer.stop()
-        await app.state.kafka_producer.stop()
+        try:
+            await app.state.kafka_consumer.stop()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("kafka_consumer_stop_failed", error=str(exc))
+        try:
+            await app.state.kafka_producer.stop()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("kafka_producer_stop_failed", error=str(exc))
         logger.info("app_stopped")
 
 
@@ -146,9 +169,12 @@ def create_app() -> FastAPI:
         components["kafka"] = "ok" if kafka_ok else "error"
 
         # Predictor
-        predictor = getattr(app.state, "predictor", None)
-        predictor_ok = bool(predictor and predictor.is_loaded)
-        components["predictor"] = "ok" if predictor_ok else "error"
+        if not settings.ml_enabled:
+            components["predictor"] = "disabled"
+        else:
+            predictor = getattr(app.state, "predictor", None)
+            predictor_ok = bool(predictor and predictor.is_loaded)
+            components["predictor"] = "ok" if predictor_ok else "error"
 
         return {
             "status": "ok",

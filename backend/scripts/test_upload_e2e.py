@@ -1,4 +1,8 @@
+# scripts.test_upload_e2e.py
+
+
 """End-to-end test: ML-powered product upload."""
+
 
 from __future__ import annotations
 
