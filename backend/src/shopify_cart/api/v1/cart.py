@@ -8,7 +8,13 @@ from fastapi import APIRouter, Depends, Request, status
 
 from shopify_cart.api.deps import CurrentUser, DbSession
 from shopify_cart.kafka.producer import KafkaProducer
-from shopify_cart.schemas.cart import CartItemAdd, CartItemUpdate, CartRead
+from shopify_cart.schemas.cart import (
+    CartItemAdd,
+    CartItemProductSnapshot,
+    CartItemReadWithProduct,
+    CartItemUpdate,
+    CartReadWithProducts,
+)
 from shopify_cart.services.cart_service import CartService
 
 router = APIRouter(prefix="/cart", tags=["cart"])
@@ -21,25 +27,43 @@ def get_producer(request: Request) -> KafkaProducer:
 ProducerDep = Annotated[KafkaProducer, Depends(get_producer)]
 
 
-def _to_read(cart) -> CartRead:  # type: ignore[no-untyped-def]
-    items = [
-        {
-            "id": i.id,
-            "product_id": i.product_id,
-            "quantity": i.quantity,
-            "unit_price": i.unit_price,
-            "subtotal": i.subtotal,
-            "created_at": i.created_at,
-            "updated_at": i.updated_at,
-        }
-        for i in cart.items
-    ]
-    total_qty = sum(i["quantity"] for i in items)
+def _to_read(cart) -> CartReadWithProducts:  # type: ignore[no-untyped-def]
+    """Build cart response with embedded product snapshots.
+
+    Requires CartService queries to selectinload(CartItem.product).
+    """
+    items: list[CartItemReadWithProduct] = []
+    for i in cart.items:
+        if i.product is None:
+            continue  # safety: skip if product row was deleted
+
+        items.append(
+            CartItemReadWithProduct(
+                id=i.id,
+                product_id=i.product_id,
+                quantity=i.quantity,
+                unit_price=i.unit_price,
+                subtotal=i.subtotal,
+                created_at=i.created_at,
+                updated_at=i.updated_at,
+                product=CartItemProductSnapshot(
+                    id=i.product.id,
+                    name=i.product.name,
+                    sku=i.product.sku,
+                    price=i.product.price,
+                    image_url=i.product.image_url,
+                    is_active=i.product.is_active,
+                ),
+            )
+        )
+
+    total_qty = sum(i.quantity for i in items)
     total_amount = CartService.total_amount(cart)
-    return CartRead(
+
+    return CartReadWithProducts(
         id=cart.id,
         user_id=cart.user_id,
-        items=items,  # type: ignore[arg-type]
+        items=items,
         item_count=len(items),
         total_quantity=total_qty,
         total_amount=total_amount,
@@ -48,15 +72,15 @@ def _to_read(cart) -> CartRead:  # type: ignore[no-untyped-def]
     )
 
 
-@router.get("", response_model=CartRead, summary="Get current user's cart")
-def get_cart(db: DbSession, user: CurrentUser) -> CartRead:
+@router.get("", response_model=CartReadWithProducts, summary="Get current user's cart")
+def get_cart(db: DbSession, user: CurrentUser) -> CartReadWithProducts:
     cart = CartService.get_or_create(db, user.id)
     return _to_read(cart)
 
 
 @router.post(
     "/items",
-    response_model=CartRead,
+    response_model=CartReadWithProducts,
     status_code=status.HTTP_200_OK,
     summary="Add an item to cart (idempotent per product)",
 )
@@ -65,7 +89,7 @@ async def add_item(
     producer: ProducerDep,
     user: CurrentUser,
     payload: CartItemAdd,
-) -> CartRead:
+) -> CartReadWithProducts:
     cart = await CartService.add_item(
         db,
         producer,
@@ -78,7 +102,7 @@ async def add_item(
 
 @router.patch(
     "/items/{item_id}",
-    response_model=CartRead,
+    response_model=CartReadWithProducts,
     summary="Update item quantity (0 removes the item)",
 )
 async def update_item(
@@ -87,7 +111,7 @@ async def update_item(
     user: CurrentUser,
     item_id: int,
     payload: CartItemUpdate,
-) -> CartRead:
+) -> CartReadWithProducts:
     cart = await CartService.update_item(
         db,
         producer,
@@ -100,7 +124,7 @@ async def update_item(
 
 @router.delete(
     "/items/{item_id}",
-    response_model=CartRead,
+    response_model=CartReadWithProducts,
     summary="Remove an item from cart",
 )
 async def remove_item(
@@ -108,7 +132,7 @@ async def remove_item(
     producer: ProducerDep,
     user: CurrentUser,
     item_id: int,
-) -> CartRead:
+) -> CartReadWithProducts:
     cart = await CartService.remove_item(
         db,
         producer,
@@ -120,13 +144,13 @@ async def remove_item(
 
 @router.delete(
     "",
-    response_model=CartRead,
+    response_model=CartReadWithProducts,
     summary="Clear the entire cart",
 )
 async def clear_cart(
     db: DbSession,
     producer: ProducerDep,
     user: CurrentUser,
-) -> CartRead:
+) -> CartReadWithProducts:
     cart = await CartService.clear(db, producer, user_id=user.id)
     return _to_read(cart)

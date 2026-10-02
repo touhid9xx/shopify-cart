@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAddToCart } from "@/hooks/use-cart";
 import { useAuth } from "@/lib/auth-context";
-import { useRouter } from "next/navigation";
+import { useCartDrawer } from "@/lib/cart-drawer-context";
 
 interface Props {
   productId: number;
@@ -18,6 +19,7 @@ export function AddToCartButton({ productId, maxQuantity }: Props) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const addToCart = useAddToCart();
+  const { open: openCartDrawer } = useCartDrawer();
 
   if (maxQuantity <= 0) {
     return (
@@ -32,7 +34,15 @@ export function AddToCartButton({ productId, maxQuantity }: Props) {
       router.push(`/login?next=/products/${productId}`);
       return;
     }
-    addToCart.mutate({ product_id: productId, quantity });
+    addToCart.mutate(
+      { product_id: productId, quantity },
+      {
+        onSuccess: () => {
+          openCartDrawer();
+          setQuantity(1);
+        },
+      },
+    );
   };
 
   return (

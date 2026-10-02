@@ -32,8 +32,11 @@ class CartService:
     @staticmethod
     def get_or_create(db: Session, user_id: int) -> Cart:
         cart = db.execute(
-            select(Cart).where(Cart.user_id == user_id).options(selectinload(Cart.items))
+            select(Cart)
+            .where(Cart.user_id == user_id)
+            .options(selectinload(Cart.items).selectinload(CartItem.product))
         ).scalar_one_or_none()
+
         if cart is not None:
             return cart
 
@@ -49,7 +52,7 @@ class CartService:
         cart = db.execute(
             select(Cart)
             .where(Cart.id == cart_id)
-            .options(selectinload(Cart.items))
+            .options(selectinload(Cart.items).selectinload(CartItem.product))
             .execution_options(populate_existing=True)
         ).scalar_one_or_none()
         if cart is None:

@@ -287,3 +287,28 @@ export interface HealthResponse {
   version: string;
   components?: Record<string, string>;
 }
+
+// ───── Cart  ─────
+export interface CartItemProductSnapshot {
+  id: number;
+  name: string;
+  sku: string;
+  price: string; // Decimal as string
+  image_url: string | null;
+  is_active: boolean;
+}
+
+export interface CartItemWithProduct extends CartItem {
+  product: CartItemProductSnapshot;
+}
+
+export interface CartWithProducts {
+  id: number;
+  user_id: number;
+  items: CartItemWithProduct[];
+  item_count: number;
+  total_quantity: number;
+  total_amount: string;
+  created_at: string;
+  updated_at: string;
+}

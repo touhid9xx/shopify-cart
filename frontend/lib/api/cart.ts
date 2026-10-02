@@ -1,21 +1,21 @@
 import { api } from "./client";
 import type {
-  Cart,
   CartItemAddPayload,
   CartItemUpdatePayload,
+  CartWithProducts,
 } from "@/lib/api-types";
 
 export const cartApi = {
-  get: () => api.get<Cart>("/cart"),
+  get: () => api.get<CartWithProducts>("/cart"),
 
   addItem: (payload: CartItemAddPayload) =>
-    api.post<Cart>("/cart/items", payload),
+    api.post<CartWithProducts>("/cart/items", payload),
 
   updateItem: (itemId: number, payload: CartItemUpdatePayload) =>
-    api.patch<Cart>(`/cart/items/${itemId}`, payload),
+    api.patch<CartWithProducts>(`/cart/items/${itemId}`, payload),
 
   removeItem: (itemId: number) =>
-    api.delete<Cart>(`/cart/items/${itemId}`),
+    api.delete<CartWithProducts>(`/cart/items/${itemId}`),
 
-  clear: () => api.delete<Cart>("/cart"),
+  clear: () => api.delete<CartWithProducts>("/cart"),
 };
