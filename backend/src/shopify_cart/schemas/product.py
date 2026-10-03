@@ -7,6 +7,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from shopify_cart.models.product import ProductReviewStatus
+
 
 # ----------------------------------------------------------------------
 # Category (compact — embedded inside product reads)
@@ -76,3 +78,14 @@ class ProductReadWithStock(ProductRead):
     """Product plus total available stock across all locations."""
 
     total_quantity: int = 0
+
+
+class ProductReadWithReview(ProductRead):
+    """Product response with review workflow fields."""
+
+    review_status: ProductReviewStatus
+    reviewed_by: int | None = None
+    reviewed_at: datetime | None = None
+    review_notes: str | None = None
+    ml_category_slug: str | None = None
+    ml_confidence: Decimal | None = None

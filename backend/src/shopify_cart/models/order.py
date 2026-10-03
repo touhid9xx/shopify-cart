@@ -1,13 +1,15 @@
-"""Order ORM model — immutable record of a checkout."""
+# shopify_cart/models/order.py
+"""Order ORM model."""
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
-from enum import StrEnum  # ← Python 3.11+; replaces `str, enum.Enum`
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from sqlalchemy import DateTime, ForeignKey, Numeric, Text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shopify_cart.db.base import Base, TimestampMixin
@@ -18,70 +20,70 @@ if TYPE_CHECKING:
 
 
 class OrderStatus(StrEnum):
-    """Order lifecycle.
-
-    Uses Python 3.11+ `StrEnum` — behaves identically to
-    `class OrderStatus(str, enum.Enum)` for:
-      - `OrderStatus.PENDING == "pending"`         → True
-      - `isinstance(OrderStatus.PENDING, str)`     → True
-      - `OrderStatus.PENDING.value`                → "pending"
-      - SQLAlchemy stores `.value` ("pending") in DB
-      - JSON serializes to `"pending"`
-
-    One behavior change vs `str + Enum`:
-      - `str(OrderStatus.PENDING)` now returns `"pending"`
-        (previously `"OrderStatus.PENDING"`).
-    """
-
-    PENDING = "pending"  # created, awaiting payment
-    PAID = "paid"  # payment received (stub — no real payment gateway)
-    SHIPPED = "shipped"  # dispatched
-    DELIVERED = "delivered"  # handed over
-    CANCELLED = "cancelled"  # user/admin cancelled before ship
+    PENDING = "pending"  # customer placed, awaiting admin
+    CONFIRMED = "confirmed"  # admin accepted
+    PAID = "paid"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"  # customer cancelled
+    REJECTED = "rejected"  # admin rejected
 
 
 class Order(Base, TimestampMixin):
     """
-    A placed order.
+    A customer order.
 
-    Amounts are snapshotted — later product/price changes do NOT
-    alter historical orders.
+    `user_id` is the customer; `reviewed_by` is the admin who approved or
+    rejected the order. Both point to users.id, so every User relationship
+    must declare which FK it uses.
     """
 
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="RESTRICT"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     status: Mapped[OrderStatus] = mapped_column(
-        SAEnum(
-            OrderStatus,
-            name="order_status_enum",
-            native_enum=False,
-            length=20,
-            values_callable=lambda enum_cls: [m.value for m in enum_cls],  # ← explicit
-        ),
+        SAEnum(OrderStatus, native_enum=False, length=20),
         default=OrderStatus.PENDING,
         nullable=False,
         index=True,
     )
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    shipping_address: Mapped[str] = mapped_column(String(500), nullable=False)
-    notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    shipping_address: Mapped[str] = mapped_column(Text, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    user: Mapped[User] = relationship("User")
+    # ---------- Admin review ----------
+    admin_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # ---------- Relationships ----------
+    # Both relationships target User, but via different FKs → disambiguate.
+    user: Mapped[User] = relationship(
+        "User",
+        foreign_keys=[user_id],
+        back_populates="orders",
+    )
+    reviewer: Mapped[User | None] = relationship(
+        "User",
+        foreign_keys=[reviewed_by],
+    )
     items: Mapped[list[OrderItem]] = relationship(
         "OrderItem",
         back_populates="order",
         cascade="all, delete-orphan",
-        order_by="OrderItem.id",
     )
 
     def __repr__(self) -> str:
         return (
             f"<Order id={self.id} user_id={self.user_id} "
-            f"status={self.status.value} total={self.total_amount}>"
+            f"status={self.status} total={self.total_amount}>"
         )

@@ -319,3 +319,54 @@ export interface CartWithProducts {
   created_at: string;
   updated_at: string;
 }
+
+
+// ───── Product Review  ─────
+
+export type ProductReviewStatus = "pending" | "approved" | "rejected";
+
+export interface ProductReadWithReview extends Product {
+  review_status: ProductReviewStatus;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  ml_category_slug: string | null;
+  ml_confidence: string | null; // Decimal as string
+}
+
+export interface ReviewActionResponse {
+  id: number;
+  review_status: ProductReviewStatus;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+}
+
+export interface ApprovePayload {
+  notes?: string | null;
+}
+
+export interface RejectPayload {
+  reason: string;
+}
+
+export interface RecategorizePayload {
+  category_id: number;
+  notes?: string | null;
+}
+
+// ───── Admin Order  ─────
+
+export interface OrderReadAdmin extends Order {
+  admin_message: string | null;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+}
+
+export interface OrderAcceptPayload {
+  notes?: string | null;
+}
+
+export interface OrderRejectPayload {
+  reason: string;
+}

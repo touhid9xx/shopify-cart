@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, MetaData, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import DateTime, MetaData, Text, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, registry
+from sqlalchemy.types import TypeEngine
 
 # ----------------------------------------------------------------------
 # Naming convention — ensures Alembic generates stable index/constraint
@@ -21,10 +22,16 @@ NAMING_CONVENTION: dict[str, str] = {
 }
 
 
+TYPE_ANNOTATION_MAP: dict[type, TypeEngine[object]] = { # noqa: var-annotated
+    str: Text,  # type: ignore[dict-item]
+}
+
+
 class Base(DeclarativeBase):
     """Base class for all ORM models."""
 
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+    registry = registry(type_annotation_map=TYPE_ANNOTATION_MAP)
 
 
 class TimestampMixin:

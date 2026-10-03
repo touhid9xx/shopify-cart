@@ -1,3 +1,5 @@
+# src/shopify_cart/core/pagination.py
+
 """Reusable pagination helpers — query params + response envelope."""
 
 from __future__ import annotations

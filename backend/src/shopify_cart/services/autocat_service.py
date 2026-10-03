@@ -34,7 +34,7 @@ from shopify_cart.logging_config import get_logger
 from shopify_cart.ml.predict import CategoryPredictor, PredictionResult
 from shopify_cart.models.category import Category
 from shopify_cart.models.inventory import Inventory
-from shopify_cart.models.product import Product
+from shopify_cart.models.product import Product, ProductReviewStatus
 from shopify_cart.schemas.admin_upload import (
     NeedsReviewResponse,
     ProductCreatedResponse,
@@ -320,6 +320,7 @@ class AutoCategorizationService:
 
         # ----- Atomic transaction: product + inventory -----
         try:
+            # ── In _create_product, normalize ml_category_slug to a real slug ──
             product = Product(
                 name=name,
                 sku=final_sku,
@@ -328,6 +329,12 @@ class AutoCategorizationService:
                 category_id=category.id,
                 image_url=stored_url,
                 is_active=True,
+                # ── Review workflow ──
+                review_status=ProductReviewStatus.PENDING,
+                ml_category_slug=(
+                    _normalize_slug(prediction.category) if prediction else None
+                ),  # ← was: prediction.category
+                ml_confidence=(Decimal(str(prediction.confidence)) if prediction else None),
             )
             db.add(product)
             db.flush()  # assigns id
@@ -359,11 +366,13 @@ class AutoCategorizationService:
         )
         await producer.publish("product.created", event, key=str(product.id))
 
+        # ── Add review_status to the success log ──
         logger.info(
             "autocat_product_created",
             product_id=product.id,
             sku=product.sku,
             category_slug=category.slug,
+            review_status=product.review_status.value,  # NEW
             reason=force_reason,
             confidence=(round(prediction.confidence, 4) if prediction is not None else None),
         )
