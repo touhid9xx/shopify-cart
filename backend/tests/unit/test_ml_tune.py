@@ -131,6 +131,6 @@ def test_trial_pruning_triggers_trial_pruned() -> None:
 
     # With alternating good/bad curves, at least one bad trial should be pruned.
     pruned = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
-    assert (
-        len(pruned) >= 1
-    ), f"Expected at least one pruned trial; got states: {[t.state.name for t in study.trials]}"
+    assert len(pruned) >= 1, (
+        f"Expected at least one pruned trial; got states: {[t.state.name for t in study.trials]}"
+    )

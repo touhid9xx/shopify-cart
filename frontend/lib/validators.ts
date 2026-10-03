@@ -23,15 +23,16 @@ export const checkoutSchema = z.object({
 });
 
 export const productFormSchema = z.object({
-  name: z.string().min(1).max(255),
-  sku: z.string().min(1).max(64),
+  name: z.string().min(1, "Name is required").max(255),
+  sku: z.string().min(1, "SKU is required").max(64),
   description: z.string().max(10_000).optional().or(z.literal("")),
   price: z
     .string()
     .regex(/^\d+(\.\d{1,2})?$/, "Must be a positive number with up to 2 decimals"),
-  category_id: z.coerce.number().int().positive().optional().nullable(),
+  category_id: z.number().int().positive().nullable().optional(),
   image_url: z.string().max(512).optional().or(z.literal("")),
 });
+
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

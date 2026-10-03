@@ -15,10 +15,11 @@ env:
   PYTHON_VERSION: "3.12"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PIP_NO_CACHE_DIR: "1"
+  NODE_VERSION: "20"
 
 jobs:
-  lint-and-test:
-    name: Lint, Type-check, Test
+  backend:
+    name: Backend — Lint, Type-check, Test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -37,6 +38,10 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+
+    defaults:
+      run:
+        working-directory: ./backend    # ← IMPORTANT
 
     steps:
       - name: Checkout repository
@@ -80,3 +85,73 @@ jobs:
           MYSQL_PASSWORD: shopify
           MYSQL_DB: shopify_cart
         run: pytest -v --maxfail=1
+
+  frontend:
+    name: Frontend — Type-check, Lint, Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: ./frontend   # ← IMPORTANT
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm tsc --noEmit
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
+        run: pnpm build
+
+  docker:
+    name: Docker — Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [backend, frontend]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          tags: shopify-cart-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          tags: shopify-cart-frontend:ci
+          build-args: |
+            NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

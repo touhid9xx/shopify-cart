@@ -1,34 +1,29 @@
+# shopify-cart/docker-compose.yml (ROOT)
+
 services:
   # ═══════════════════════════════════════════════════════════════
   # App (FastAPI + Uvicorn)
   # ═══════════════════════════════════════════════════════════════
   app:
     build:
-      context: .
+      context: ./backend            # ← CHANGED: from root
       dockerfile: Dockerfile
     container_name: shopify-app
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      # ── Container-internal service names (override .env) ──
       MYSQL_HOST: mysql
       MYSQL_PORT: "3306"
       MYSQL_USER: ${MYSQL_USER:-root}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-Tushar@007}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-shopify_cart}
-
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-
       MLFLOW_TRACKING_URI: http://mlflow:5000
-
-      # ── App config ──
       APP_ENV: production
       APP_DEBUG: "false"
       APP_HOST: 0.0.0.0
       APP_PORT: "8000"
-
-      # ── JWT ──
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
     depends_on:
       mysql:
@@ -49,8 +44,35 @@ services:
       retries: 5
       start_period: 30s
 
+  # ── Frontend (Next.js) ──
+  frontend:
+    build:
+      context: ./frontend           # ← CHANGED: from root
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
+    container_name: shopify-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_INTERNAL_URL: http://app:8000
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
+      NODE_ENV: production
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - shopify
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   # ---------------------------------------------------------------
-  # MySQL 8 — main application database
+  # MySQL 8
   # ---------------------------------------------------------------
   mysql:
     image: mysql:8.0
@@ -79,7 +101,7 @@ services:
       start_period: 30s
 
   # ---------------------------------------------------------------
-  # Zookeeper — required by Kafka
+  # Zookeeper
   # ---------------------------------------------------------------
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
@@ -100,7 +122,7 @@ services:
       start_period: 20s
 
   # ---------------------------------------------------------------
-  # Kafka (Confluent image — matches Zookeeper version)
+  # Kafka
   # ---------------------------------------------------------------
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -135,7 +157,7 @@ services:
       start_period: 60s
 
   # ---------------------------------------------------------------
-  # MLflow — Tracking server (filesystem backend + proxied artifacts)
+  # MLflow
   # ---------------------------------------------------------------
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.19.0
@@ -144,8 +166,8 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./mlruns:/mlruns
-      - ./mlartifacts:/mlartifacts
+      - ./backend/mlruns:/mlruns
+      - ./backend/mlartifacts:/mlartifacts
     networks:
       - shopify
     command: >
@@ -163,9 +185,6 @@ services:
       retries: 5
       start_period: 30s
 
-# ═══════════════════════════════════════════════════════════════
-# Networks + Volumes
-# ═══════════════════════════════════════════════════════════════
 networks:
   shopify:
     driver: bridge

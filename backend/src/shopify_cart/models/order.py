@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import enum
 from decimal import Decimal
+from enum import StrEnum  # ← Python 3.11+; replaces `str, enum.Enum`
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum as SAEnum
@@ -17,8 +17,21 @@ if TYPE_CHECKING:
     from shopify_cart.models.user import User
 
 
-class OrderStatus(str, enum.Enum):
-    """Order lifecycle. Immutable in DB via string enum."""
+class OrderStatus(StrEnum):
+    """Order lifecycle.
+
+    Uses Python 3.11+ `StrEnum` — behaves identically to
+    `class OrderStatus(str, enum.Enum)` for:
+      - `OrderStatus.PENDING == "pending"`         → True
+      - `isinstance(OrderStatus.PENDING, str)`     → True
+      - `OrderStatus.PENDING.value`                → "pending"
+      - SQLAlchemy stores `.value` ("pending") in DB
+      - JSON serializes to `"pending"`
+
+    One behavior change vs `str + Enum`:
+      - `str(OrderStatus.PENDING)` now returns `"pending"`
+        (previously `"OrderStatus.PENDING"`).
+    """
 
     PENDING = "pending"  # created, awaiting payment
     PAID = "paid"  # payment received (stub — no real payment gateway)
@@ -44,7 +57,13 @@ class Order(Base, TimestampMixin):
         index=True,
     )
     status: Mapped[OrderStatus] = mapped_column(
-        SAEnum(OrderStatus, name="order_status_enum", native_enum=False, length=20),
+        SAEnum(
+            OrderStatus,
+            name="order_status_enum",
+            native_enum=False,
+            length=20,
+            values_callable=lambda enum_cls: [m.value for m in enum_cls],  # ← explicit
+        ),
         default=OrderStatus.PENDING,
         nullable=False,
         index=True,

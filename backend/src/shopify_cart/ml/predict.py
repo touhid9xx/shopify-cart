@@ -9,6 +9,14 @@ Design:
     which is fragile across torch wheel variants (+cpu vs +cu118 vs +cu124).
   - Rebuilds the ResNet-18 shell with `pretrained=False` because we load
     our own weights — no need for ImageNet download inside offline containers.
+
+MLflow compatibility notes:
+  - The module-level `mlflow.artifacts.download_artifacts(run_id=..., artifact_path=...)`
+    uses an older API path that returns 500 on MLflow 2.19+ servers for
+    run-scoped artifacts. We use `MlflowClient.download_artifacts(run_id, path)`
+    instead, which is stable across MLflow 2.x versions.
+  - Model artifacts are ~50 MB. The default 2-second HTTP timeout is too short;
+    we raise it to 30 seconds and enable 3 retries.
 """
 
 from __future__ import annotations
@@ -36,8 +44,14 @@ from shopify_cart.logging_config import get_logger
 from shopify_cart.ml.dataset import IMAGE_SIZE, IMAGENET_MEAN, IMAGENET_STD
 from shopify_cart.ml.train import build_model
 
-os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "2")
-os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "0")
+# ----------------------------------------------------------------------
+# MLflow HTTP client tuning (must be set before importing MlflowClient)
+# ----------------------------------------------------------------------
+# Model artifacts are ~50 MB. Default 2s timeout is far too short.
+# 30s covers slow container-to-host transfers; 3 retries handle
+# transient connection resets.
+os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "10")
+os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "1")
 
 logger = get_logger(__name__)
 
@@ -112,7 +126,10 @@ class CategoryPredictor:
 
     _PREPROCESS = transforms.Compose(
         [
-            transforms.Resize((IMAGE_SIZE, IMAGE_SIZE), interpolation=InterpolationMode.BILINEAR),
+            transforms.Resize(
+                (IMAGE_SIZE, IMAGE_SIZE),
+                interpolation=InterpolationMode.BILINEAR,
+            ),
             transforms.ToTensor(),
             transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
         ]
@@ -206,22 +223,29 @@ class CategoryPredictor:
             raise MLModelError(f"Cannot access MLflow registry for {model_name!r}: {exc}") from exc
 
         # ---- Download state_dict artifact ----
-        # Look for pytorch_model/best_model.pt first (our convention);
-        # fall back to pytorch_model/model.pth (older MLflow log_model output).
+        # Uses MlflowClient.download_artifacts (NOT mlflow.artifacts.download_artifacts)
+        # because the module-level helper hits an older API path that returns
+        # 500 on MLflow 2.19+ for run-scoped artifacts.
         try:
-            from mlflow.artifacts import download_artifacts
+            from mlflow.tracking import MlflowClient
 
+            client = MlflowClient()
             candidates = [
                 "pytorch_model/best_model.pt",
                 "pytorch_model/model_state.pt",
                 "pytorch_model/data/model.pth",
                 "model/best_model.pt",
+                "best_model.pt",
             ]
             state_path: str | None = None
             last_exc: Exception | None = None
             for rel in candidates:
                 try:
-                    state_path = download_artifacts(run_id=run_id, artifact_path=rel)
+                    state_path = client.download_artifacts(
+                        run_id=run_id,
+                        path=rel,
+                        dst_path=None,
+                    )
                     logger.info("predictor_state_loaded", path=rel)
                     break
                 except Exception as exc:  # noqa: BLE001
@@ -305,9 +329,16 @@ class CategoryPredictor:
         try:
             import json
 
-            from mlflow.artifacts import download_artifacts
+            from mlflow.tracking import MlflowClient
 
-            path = download_artifacts(run_id=run_id, artifact_path="class_labels.json")
+            client = MlflowClient()
+            # Use MlflowClient.download_artifacts — more reliable across
+            # MLflow 2.x server versions than the module-level helper.
+            path = client.download_artifacts(
+                run_id=run_id,
+                path="class_labels.json",
+                dst_path=None,
+            )
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             classes = data.get("classes", [])

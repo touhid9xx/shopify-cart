@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Generic, TypeVar, cast
+from typing import Annotated, Any, cast
 
 from fastapi import Query
 from pydantic import BaseModel, Field
@@ -10,7 +10,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
-T = TypeVar("T")
+# ⚠️ PEP 695 (Python 3.12): no module-level `T = TypeVar("T")` needed.
+#     Generic types are declared inline: `class Page[T](...)`,
+#     `def build_page[T](...)`.
 
 MAX_PAGE_SIZE = 100
 DEFAULT_PAGE_SIZE = 20
@@ -38,7 +40,10 @@ def get_page_params(
     return PageParams(page=page, size=size)
 
 
-class Page(BaseModel, Generic[T]):
+# ──────────────────────────────────────────────────────────────────────
+# Response envelope — PEP 695 generic syntax (Python 3.12+)
+# ──────────────────────────────────────────────────────────────────────
+class Page[T](BaseModel):
     """Standard paginated response envelope."""
 
     items: list[T]
@@ -48,7 +53,10 @@ class Page(BaseModel, Generic[T]):
     pages: int
 
 
-def paginate_query(
+# ──────────────────────────────────────────────────────────────────────
+# Query execution helpers — PEP 695 generic function syntax
+# ──────────────────────────────────────────────────────────────────────
+def paginate_query[T](
     db: Session,
     stmt: Select[Any],
     params: PageParams,
@@ -73,7 +81,7 @@ def paginate_query(
     return rows, total
 
 
-def build_page(items: list[T], total: int, params: PageParams) -> Page[T]:
+def build_page[T](items: list[T], total: int, params: PageParams) -> Page[T]:
     """Wrap items + total into a Page envelope."""
     pages = (total + params.size - 1) // params.size if params.size else 0
     return Page[T](

@@ -94,9 +94,9 @@ def client(
 
     app = create_app()
     with TestClient(app) as c:
-        assert (
-            app.state.kafka_producer is mock_kafka_producer
-        ), "KafkaProducer was not patched — check monkeypatch target"
+        assert app.state.kafka_producer is mock_kafka_producer, (
+            "KafkaProducer was not patched — check monkeypatch target"
+        )
         yield c
 
 

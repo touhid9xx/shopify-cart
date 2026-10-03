@@ -97,6 +97,17 @@ export function useUploadProductImage() {
         });
       }
     },
-    onError: (err) => toast.error(errMsg(err, "Upload failed")),
+    onError: (err) => {
+      // ── Handle ML unavailable (503) gracefully ──
+      if (err instanceof HttpError && err.status === 503) {
+        toast.error("ML classifier unavailable", {
+          description:
+            "Use the Manual entry tab to create this product, or ask admin to start MLflow.",
+          duration: 8000,
+        });
+        return;
+      }
+      toast.error(errMsg(err, "Upload failed"));
+    },
   });
 }
