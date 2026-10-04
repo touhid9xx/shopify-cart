@@ -22,7 +22,7 @@ NAMING_CONVENTION: dict[str, str] = {
 }
 
 
-TYPE_ANNOTATION_MAP: dict[type, TypeEngine[object]] = { # noqa: var-annotated
+TYPE_ANNOTATION_MAP: dict[type, TypeEngine[object]] = {  # noqa: var-annotated
     str: Text,  # type: ignore[dict-item]
 }
 

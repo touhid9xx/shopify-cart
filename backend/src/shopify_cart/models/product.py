@@ -61,7 +61,12 @@ class Product(Base, TimestampMixin):
 
     # ---------- Review workflow ----------
     review_status: Mapped[ProductReviewStatus] = mapped_column(
-        SAEnum(ProductReviewStatus, native_enum=False, length=20),
+        SAEnum(
+            ProductReviewStatus,
+            native_enum=False,
+            length=20,
+            values_callable=lambda e: [m.value for m in e],  # ← ADD THIS LINE
+        ),
         default=ProductReviewStatus.PENDING,
         nullable=False,
         index=True,

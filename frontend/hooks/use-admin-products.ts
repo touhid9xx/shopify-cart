@@ -53,6 +53,18 @@ export function usePendingReviewProducts(
 }
 
 // ══════════════════════════════════════════════════════════════
+// Single product (with review + ML metadata)
+// ══════════════════════════════════════════════════════════════
+export function useAdminProduct(id: number) {
+  return useQuery({
+    queryKey: ["admin", "products", id],
+    queryFn: () => adminProductsApi.getById(id),
+    enabled: Number.isFinite(id) && id > 0,
+    staleTime: 30_000,
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
 // Helpers
 // ══════════════════════════════════════════════════════════════
 function errMsg(err: unknown, fallback: string): string {

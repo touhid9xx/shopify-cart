@@ -19,25 +19,16 @@ class User(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-
-    email: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, index=True
-    )
-
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
 
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    is_admin: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, nullable=False, server_default="1"
     )
 
-
-    full_name: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
+    full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # ---------- Relationships ----------
     orders: Mapped[list[Order]] = relationship(

@@ -1,3 +1,4 @@
+// location :frontend/components/admin/product-review-queue.tsx
 "use client";
 
 import Link from "next/link";

@@ -13,6 +13,9 @@ import type {
 } from "@/lib/api-types";
 
 export const adminProductsApi = {
+  /** Fetch a single product with review + ML metadata (admin) */
+  getById: (id: number) =>
+    api.get<ProductReadWithReview>(`/admin/products/${id}`),
   /** Create a new product (admin) */
   create: (payload: ProductCreatePayload) =>
     api.post<Product>("/admin/products", payload),

@@ -1,3 +1,5 @@
+// locacation :frontend/app/(admin)/dashboard/products/review/page.tsx
+
 import type { Metadata } from "next";
 import { ProductReviewQueue } from "@/components/admin/product-review-queue";
 

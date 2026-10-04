@@ -178,6 +178,31 @@ def list_pending_review(
 
 
 # ══════════════════════════════════════════════════════════════════════
+# SINGLE PRODUCT (admin) — must come AFTER /pending-review
+# ══════════════════════════════════════════════════════════════════════
+@router.get(
+    "/{product_id}",
+    response_model=ProductReadWithReview,
+    summary="Get a single product with review + ML metadata (admin only)",
+)
+def get_admin_product(
+    db: DbSession,
+    _admin: CurrentAdmin,
+    product_id: int,
+) -> ProductReadWithReview:
+    """Return one product including review workflow + ML fields.
+
+    Only admins can see `ml_category_slug`, `ml_confidence`, `review_*`.
+    Public `GET /products/{id}` deliberately omits these.
+    """
+    stmt = select(Product).where(Product.id == product_id).options(selectinload(Product.category))
+    product = db.execute(stmt).scalar_one_or_none()
+    if product is None:
+        raise NotFoundError(f"Product {product_id} not found.")
+    return ProductReadWithReview.model_validate(product)
+
+
+# ══════════════════════════════════════════════════════════════════════
 # REVIEW ACTIONS — approve / reject / recategorize
 # ══════════════════════════════════════════════════════════════════════
 @router.post(

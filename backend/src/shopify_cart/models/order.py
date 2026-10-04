@@ -47,7 +47,12 @@ class Order(Base, TimestampMixin):
         index=True,
     )
     status: Mapped[OrderStatus] = mapped_column(
-        SAEnum(OrderStatus, native_enum=False, length=20),
+        SAEnum(
+            OrderStatus,
+            native_enum=False,
+            length=20,
+            values_callable=lambda e: [m.value for m in e],  # ← ADD THIS
+        ),
         default=OrderStatus.PENDING,
         nullable=False,
         index=True,
