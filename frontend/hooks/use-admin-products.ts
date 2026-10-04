@@ -12,14 +12,26 @@ import { productsApi, type ListProductsParams } from "@/lib/api/products";
 import { HttpError } from "@/lib/api/client";
 import { productsKeys } from "@/hooks/use-products";
 import type {
+  ApprovePayload,
   AutoCategorizeResponse,
   ProductCreatePayload,
   ProductUpdatePayload,
+  RecategorizePayload,
+  RejectPayload,
 } from "@/lib/api-types";
 
-// ──────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// Query keys
+// ══════════════════════════════════════════════════════════════
+export const adminProductsKeys = {
+  all: ["admin", "products"] as const,
+  pendingReview: (params: { page?: number; size?: number } = {}) =>
+    ["admin", "products", "pending-review", params] as const,
+};
+
+// ══════════════════════════════════════════════════════════════
 // Queries
-// ──────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
 export function useAdminProducts(params: ListProductsParams = {}) {
   return useQuery({
     queryKey: [...productsKeys.all, "admin", params],
@@ -29,21 +41,33 @@ export function useAdminProducts(params: ListProductsParams = {}) {
   });
 }
 
-// ──────────────────────────────────────────────────────────────
+export function usePendingReviewProducts(
+  params: { page?: number; size?: number } = {},
+) {
+  return useQuery({
+    queryKey: adminProductsKeys.pendingReview(params),
+    queryFn: () => adminProductsApi.listPendingReview(params),
+    placeholderData: (prev) => prev,
+    refetchOnMount: "always",
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
 // Helpers
-// ──────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
 function errMsg(err: unknown, fallback: string): string {
   if (err instanceof HttpError) return err.payload?.detail ?? err.message;
   return fallback;
 }
 
-// ──────────────────────────────────────────────────────────────
-// Mutations
-// ──────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// CRUD mutations
+// ══════════════════════════════════════════════════════════════
 export function useCreateProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: ProductCreatePayload) => adminProductsApi.create(payload),
+    mutationFn: (payload: ProductCreatePayload) =>
+      adminProductsApi.create(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: productsKeys.all });
       toast.success("Product created");
@@ -55,8 +79,13 @@ export function useCreateProduct() {
 export function useUpdateProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: ProductUpdatePayload }) =>
-      adminProductsApi.update(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: ProductUpdatePayload;
+    }) => adminProductsApi.update(id, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: productsKeys.all });
       toast.success("Product updated");
@@ -83,11 +112,13 @@ export function useUploadProductImage() {
     mutationFn: adminProductsApi.uploadImage,
     onSuccess: (result: AutoCategorizeResponse) => {
       qc.invalidateQueries({ queryKey: productsKeys.all });
+      qc.invalidateQueries({ queryKey: adminProductsKeys.all });
+
       if (result.status === "created") {
-        toast.success("Product created", {
+        toast.success("Product created — pending review", {
           description: `Auto-categorized as ${result.category_name} (${Math.round(
             (result.confidence ?? 0) * 100,
-          )}% confidence).`,
+          )}% confidence). Awaiting admin review.`,
         });
       } else {
         toast.warning("Needs review", {
@@ -98,7 +129,6 @@ export function useUploadProductImage() {
       }
     },
     onError: (err) => {
-      // ── Handle ML unavailable (503) gracefully ──
       if (err instanceof HttpError && err.status === 503) {
         toast.error("ML classifier unavailable", {
           description:
@@ -109,5 +139,58 @@ export function useUploadProductImage() {
       }
       toast.error(errMsg(err, "Upload failed"));
     },
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// Review mutations
+// ══════════════════════════════════════════════════════════════
+function invalidateReviewData(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: adminProductsKeys.all });
+  qc.invalidateQueries({ queryKey: productsKeys.all });
+}
+
+export function useApproveProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload?: ApprovePayload }) =>
+      adminProductsApi.approve(id, payload ?? {}),
+    onSuccess: () => {
+      invalidateReviewData(qc);
+      toast.success("Product approved");
+    },
+    onError: (err) => toast.error(errMsg(err, "Could not approve product")),
+  });
+}
+
+export function useRejectProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: RejectPayload }) =>
+      adminProductsApi.reject(id, payload),
+    onSuccess: () => {
+      invalidateReviewData(qc);
+      toast.success("Product rejected");
+    },
+    onError: (err) => toast.error(errMsg(err, "Could not reject product")),
+  });
+}
+
+export function useRecategorizeProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: RecategorizePayload;
+    }) => adminProductsApi.recategorize(id, payload),
+    onSuccess: () => {
+      invalidateReviewData(qc);
+      toast.success("Product recategorized and approved");
+    },
+    onError: (err) =>
+      toast.error(errMsg(err, "Could not recategorize product")),
   });
 }

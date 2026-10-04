@@ -1,11 +1,15 @@
 import { api } from "./client";
 import type {
+  ApprovePayload,
   AutoCategorizeResponse,
   Page,
   Product,
   ProductCreatePayload,
+  ProductReadWithReview,
   ProductUpdatePayload,
-  ProductWithStock,
+  RecategorizePayload,
+  RejectPayload,
+  ReviewActionResponse,
 } from "@/lib/api-types";
 
 export const adminProductsApi = {
@@ -48,4 +52,34 @@ export const adminProductsApi = {
     }
     return api.upload<AutoCategorizeResponse>("/admin/products/upload", form);
   },
+
+  // ══════════════════════════════════════════════════════════════
+  // Review workflow
+  // ══════════════════════════════════════════════════════════════
+
+  /** List products pending admin review */
+  listPendingReview: (params: { page?: number; size?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set("page", String(params.page));
+    if (params.size) qs.set("size", String(params.size));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return api.get<Page<ProductReadWithReview>>(
+      `/admin/products/pending-review${suffix}`,
+    );
+  },
+
+  /** Approve a pending product */
+  approve: (id: number, payload: ApprovePayload = {}) =>
+    api.post<ReviewActionResponse>(`/admin/products/${id}/approve`, payload),
+
+  /** Reject a pending product with reason */
+  reject: (id: number, payload: RejectPayload) =>
+    api.post<ReviewActionResponse>(`/admin/products/${id}/reject`, payload),
+
+  /** Override ML category and approve */
+  recategorize: (id: number, payload: RecategorizePayload) =>
+    api.patch<ReviewActionResponse>(
+      `/admin/products/${id}/recategorize`,
+      payload,
+    ),
 };

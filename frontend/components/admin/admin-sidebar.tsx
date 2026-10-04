@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  CheckCircle2,
   LayoutDashboard,
   Package,
   ShoppingCart,
@@ -18,6 +19,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  badge?: "review";
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -25,6 +27,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard",
     label: "Dashboard",
     icon: <LayoutDashboard className="h-4 w-4" />,
+  },
+  {
+    href: "/dashboard/products/review",
+    label: "Review Queue",
+    icon: <CheckCircle2 className="h-4 w-4" />,
+    badge: "review",
   },
   {
     href: "/dashboard/products",
