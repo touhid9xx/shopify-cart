@@ -188,6 +188,8 @@ export type OrderStatus =
   | "paid"
   | "shipped"
   | "delivered"
+  | "confirmed"
+  | "rejected"
   | "cancelled";
 
 export interface OrderItem {
@@ -201,12 +203,15 @@ export interface OrderItem {
 }
 
 export interface Order {
-  id: number;
+   id: number;
   user_id: number;
   status: OrderStatus;
   total_amount: string;
   shipping_address: string;
   notes: string | null;
+  admin_message: string | null;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
   items: OrderItem[];
   item_count: number;
   created_at: string;
@@ -369,4 +374,29 @@ export interface OrderAcceptPayload {
 
 export interface OrderRejectPayload {
   reason: string;
+}
+
+
+// ──────────────────────────────────────────────────────────────
+// Admin Orders
+// ──────────────────────────────────────────────────────────────
+
+export interface OrderReadAdmin extends Order {
+  admin_message: string | null;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+}
+
+export interface OrderAcceptPayload {
+  notes?: string | null;
+}
+
+export interface OrderRejectPayload {
+  reason: string;
+}
+
+export interface ListAdminOrdersParams {
+  page?: number;
+  size?: number;
+  status?: OrderStatus;
 }

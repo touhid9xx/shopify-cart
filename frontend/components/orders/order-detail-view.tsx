@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MapPin, XCircle } from "lucide-react";
+import { ArrowLeft, Info, MapPin, XCircle } from "lucide-react";
 import { useState } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -35,7 +40,10 @@ interface Props {
 export function OrderDetailView({ orderId }: Props) {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { data: order, isLoading, isError } = useOrder(orderId, isAuthenticated);
+  const { data: order, isLoading, isError } = useOrder(
+    orderId,
+    isAuthenticated,
+  );
   const cancelOrder = useCancelOrder();
   const [cancelOpen, setCancelOpen] = useState(false);
 
@@ -83,14 +91,18 @@ export function OrderDetailView({ orderId }: Props) {
     );
   }
 
-  const canCancel = order.status === "pending";
+  const canCancel =
+    order.status === "pending" || order.status === "confirmed";
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Back */}
       <Link
         href="/orders"
-        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "mb-6")}
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "sm" }),
+          "mb-6",
+        )}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to orders
@@ -106,6 +118,37 @@ export function OrderDetailView({ orderId }: Props) {
         </div>
         <OrderStatusBadge status={order.status} className="text-sm" />
       </div>
+
+      {/* Admin message banner */}
+      {order.admin_message && (
+        <Card
+          className={cn(
+            "mb-6",
+            order.status === "rejected"
+              ? "border-destructive/50 bg-destructive/5"
+              : "border-primary/50 bg-primary/5",
+          )}
+        >
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Info className="h-4 w-4" />
+              {order.status === "rejected"
+                ? "Order rejected by admin"
+                : "Message from admin"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-line text-sm">
+              {order.admin_message}
+            </p>
+            {order.reviewed_at && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {formatDateTime(order.reviewed_at)}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left: Items + shipping */}
