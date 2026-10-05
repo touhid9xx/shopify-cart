@@ -71,7 +71,7 @@ export interface CategoryRead {
 
 // ───── Product ─────
 export interface Product {
-   id: number;
+  id: number;
   name: string;
   sku: string;
   description: string | null;
@@ -203,7 +203,7 @@ export interface OrderItem {
 }
 
 export interface Order {
-   id: number;
+  id: number;
   user_id: number;
   status: OrderStatus;
   total_amount: string;
@@ -300,12 +300,12 @@ export interface HealthResponse {
   components?: Record<string, string>;
 }
 
-// ───── Cart  ─────
+// ───── Cart (with product snapshot) ─────
 export interface CartItemProductSnapshot {
   id: number;
   name: string;
   sku: string;
-  price: string; // Decimal as string
+  price: string;
   image_url: string | null;
   is_active: boolean;
 }
@@ -325,9 +325,7 @@ export interface CartWithProducts {
   updated_at: string;
 }
 
-
-// ───── Product Review  ─────
-
+// ───── Product Review ─────
 export type ProductReviewStatus = "pending" | "approved" | "rejected";
 
 export interface ProductReadWithReview extends Product {
@@ -336,7 +334,7 @@ export interface ProductReadWithReview extends Product {
   reviewed_at: string | null;
   review_notes: string | null;
   ml_category_slug: string | null;
-  ml_confidence: string | null; // Decimal as string
+  ml_confidence: string | null;
 }
 
 export interface ReviewActionResponse {
@@ -360,27 +358,7 @@ export interface RecategorizePayload {
   notes?: string | null;
 }
 
-// ───── Admin Order  ─────
-
-export interface OrderReadAdmin extends Order {
-  admin_message: string | null;
-  reviewed_by: number | null;
-  reviewed_at: string | null;
-}
-
-export interface OrderAcceptPayload {
-  notes?: string | null;
-}
-
-export interface OrderRejectPayload {
-  reason: string;
-}
-
-
-// ──────────────────────────────────────────────────────────────
-// Admin Orders
-// ──────────────────────────────────────────────────────────────
-
+// ───── Admin Orders ─────
 export interface OrderReadAdmin extends Order {
   admin_message: string | null;
   reviewed_by: number | null;
@@ -399,4 +377,57 @@ export interface ListAdminOrdersParams {
   page?: number;
   size?: number;
   status?: OrderStatus;
+}
+
+// ───── Admin Inventory ─────
+export interface ProductSnapshot {
+  id: number;
+  sku: string;
+  name: string;
+  image_url: string | null;
+  price: string;
+  is_active: boolean;
+  review_status: string;
+}
+
+export interface InventoryWithProduct {
+  id: number;
+  product_id: number;
+  location: string;
+  quantity: number;
+  low_stock_threshold: number;
+  is_low_stock: boolean;
+  created_at: string;
+  updated_at: string;
+  product: ProductSnapshot;
+}
+
+export interface InventoryStats {
+  total_skus: number;
+  total_units: number;
+  low_stock_count: number;
+  out_of_stock_count: number;
+  total_inventory_value: string;
+}
+
+export interface InventoryAdjustRequest {
+  product_id: number;
+  location: string;
+  delta: number;
+  reason?: string | null;
+}
+
+export interface ListInventoryParams {
+  page?: number;
+  size?: number;
+  low_stock_only?: boolean;
+  out_of_stock_only?: boolean;
+  search?: string;
+  location?: string;
+}
+
+export interface ListReorderSuggestionsParams {
+  low_stock_only?: boolean;
+  lookback_days?: number;
+  limit?: number;
 }
