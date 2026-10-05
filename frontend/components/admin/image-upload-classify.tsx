@@ -1,9 +1,8 @@
-// location: frontend/components/admin/image-upload-classify.tsx
 "use client";
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, Loader2, Sparkles, Upload, X } from "lucide-react";
+import { ImagePlus, Loader2, Package, Sparkles, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 import { useUploadProductImage } from "@/hooks/use-admin-products";
 import { cn } from "@/lib/utils";
@@ -25,6 +24,9 @@ import type { AutoCategorizeResponse } from "@/lib/api-types";
 
 const MAX_FILE_MB = 5;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+const DEFAULT_LOCATION = "default";
+const DEFAULT_LOW_STOCK_THRESHOLD = 5;
 
 export function ImageUploadClassify() {
   const router = useRouter();
@@ -38,6 +40,13 @@ export function ImageUploadClassify() {
   const [price, setPrice] = useState("");
   const [sku, setSku] = useState("");
   const [description, setDescription] = useState("");
+
+  // ─── Stock fields ───
+  const [location, setLocation] = useState(DEFAULT_LOCATION);
+  const [quantity, setQuantity] = useState("0");
+  const [lowStockThreshold, setLowStockThreshold] = useState(
+    String(DEFAULT_LOW_STOCK_THRESHOLD),
+  );
 
   const [result, setResult] = useState<AutoCategorizeResponse | null>(null);
 
@@ -77,11 +86,22 @@ export function ImageUploadClassify() {
   }
 
   // ──────────────────────────────────────────────────────────
+  // Validation
+  // ──────────────────────────────────────────────────────────
+  const quantityNum = Number(quantity);
+  const thresholdNum = Number(lowStockThreshold);
+  const stockValid =
+    Number.isInteger(quantityNum) &&
+    quantityNum >= 0 &&
+    Number.isInteger(thresholdNum) &&
+    thresholdNum >= 0;
+
+  // ──────────────────────────────────────────────────────────
   // Submit
   // ──────────────────────────────────────────────────────────
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (!file || !stockValid) return;
 
     upload.mutate(
       {
@@ -90,12 +110,14 @@ export function ImageUploadClassify() {
         price: price.trim(),
         sku: sku.trim() || undefined,
         description: description.trim() || undefined,
-      },
+        location: location.trim() || DEFAULT_LOCATION,
+        initial_quantity: quantityNum,
+        low_stock_threshold: thresholdNum,
+      } as any,
       {
         onSuccess: (res) => {
           setResult(res);
           if (res.status === "created") {
-            // Success → redirect to edit page after brief delay
             setTimeout(() => {
               router.push(`/dashboard/products/${res.product_id}/edit`);
             }, 1500);
@@ -141,7 +163,6 @@ export function ImageUploadClassify() {
               >
                 {preview ? (
                   <>
-                    {/* Preview */}
                     <div className="relative">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -172,7 +193,7 @@ export function ImageUploadClassify() {
                     </div>
                     <div>
                       <p className="text-sm font-medium">
-                        Click to upload or drag & drop
+                        Click to upload or drag &amp; drop
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         JPEG, PNG or WebP · max {MAX_FILE_MB} MB
@@ -253,17 +274,85 @@ export function ImageUploadClassify() {
               />
             </div>
 
+            {/* ─── Initial Stock ─── */}
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Initial stock</h3>
+                <span className="text-xs text-muted-foreground">
+                  (optional — defaults to 0)
+                </span>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="upload-location">Location</Label>
+                  <Input
+                    id="upload-location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="default"
+                    disabled={upload.isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="upload-quantity">Quantity</Label>
+                  <Input
+                    id="upload-quantity"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    inputMode="numeric"
+                    disabled={upload.isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="upload-threshold">Low-stock alert at</Label>
+                  <Input
+                    id="upload-threshold"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={lowStockThreshold}
+                    onChange={(e) => setLowStockThreshold(e.target.value)}
+                    inputMode="numeric"
+                    disabled={upload.isPending}
+                  />
+                </div>
+              </div>
+
+              {!stockValid && (
+                <p className="text-xs text-destructive">
+                  Quantity and threshold must be non-negative integers.
+                </p>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                An inventory record is created for the chosen location. The
+                product will trigger a low-stock alert when quantity drops to
+                or below the threshold.
+              </p>
+            </div>
+
             {/* Submit */}
             <Button
               type="submit"
               size="lg"
               className="w-full"
-              disabled={!file || !name || !price || upload.isPending}
+              disabled={
+                !file || !name || !price || !stockValid || upload.isPending
+              }
             >
               {upload.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Classifying & uploading…
+                  Classifying &amp; uploading…
                 </>
               ) : (
                 <>
