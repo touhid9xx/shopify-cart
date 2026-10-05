@@ -431,3 +431,53 @@ export interface ListReorderSuggestionsParams {
   lookback_days?: number;
   limit?: number;
 }
+
+// ───── Admin Analytics ─────
+export interface DailySalesRead {
+  id: number;
+  sales_date: string;   // "YYYY-MM-DD"
+  product_id: number;
+  quantity: number;
+  revenue: string;      // Decimal as string
+  order_count: number;
+}
+
+export interface AnalyticsAlertRead {
+  id: number;
+  product_id: number;
+  location: string;
+  quantity: number;
+  threshold: number;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+export interface ListDailySalesParams {
+  page?: number;
+  size?: number;
+  day?: string;         // "YYYY-MM-DD"
+}
+
+// ───── Aggregated types (client-computed) ─────
+export interface AnalyticsSummary {
+  total_revenue: number;
+  total_orders: number;
+  total_units: number;
+  avg_order_value: number;
+  distinct_products: number;
+  day_count: number;
+}
+
+export interface TimeSeriesPoint {
+  date: string;         // "YYYY-MM-DD"
+  revenue: number;
+  quantity: number;
+  orders: number;
+}
+
+export interface TopProduct {
+  product_id: number;
+  revenue: number;
+  quantity: number;
+  orders: number;
+}
