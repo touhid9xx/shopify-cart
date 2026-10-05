@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from shopify_cart.api.v1 import (
     admin_analytics,
     admin_inventory,
+    admin_ml_insights,
     admin_orders,
     admin_products,
     auth,
@@ -28,6 +29,7 @@ api_router.include_router(orders.router)
 api_router.include_router(admin_orders.router)
 api_router.include_router(admin_analytics.router)
 api_router.include_router(admin_inventory.router)
+api_router.include_router(admin_ml_insights.router)
 api_router.include_router(predict.router)
 
 __all__ = ["api_router"]
