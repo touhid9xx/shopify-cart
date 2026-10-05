@@ -1,3 +1,4 @@
+// location: frontend/components/admin/image-upload-classify.tsx
 "use client";
 
 import { useState, useRef } from "react";
