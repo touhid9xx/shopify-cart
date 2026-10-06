@@ -206,3 +206,21 @@ export function useRecategorizeProduct() {
       toast.error(errMsg(err, "Could not recategorize product")),
   });
 }
+export function useUploadProductImageForProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, image }: { id: number; image: File }) =>
+      adminProductsApi.uploadProductImage(id, image),
+    onSuccess: (data) => {
+      toast.success("Product image updated");
+      // Invalidate this product + list
+      qc.invalidateQueries({ queryKey: ["admin", "products", data.id] });
+      qc.invalidateQueries({ queryKey: ["admin", "products"] });
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error ? error.message : "Failed to upload image";
+      toast.error(message);
+    },
+  });
+}

@@ -185,3 +185,65 @@ class ProductService:
             .all()
         )
         return int(sum(rows))
+
+    # ------------------------------------------------------------------
+    # Update product image (from uploaded file bytes)
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def update_image(
+        db: Session,
+        producer: KafkaProducer,
+        product_id: int,
+        *,
+        image_bytes: bytes,
+        content_type: str,
+    ) -> Product:
+        """
+        Replace a product's image with an uploaded file.
+
+        Saves the file to data/uploads/, updates product.image_url,
+        and publishes product.updated.
+        """
+        from shopify_cart.models.product import Product
+        from shopify_cart.services.autocat_service import _save_uploaded_image
+
+        product = db.get(Product, product_id)
+        if product is None:
+            raise NotFoundError(f"Product {product_id} not found.")
+
+        # Validate content type
+        allowed = {"image/jpeg", "image/png", "image/webp"}
+        if content_type not in allowed:
+            raise ValidationError(
+                f"Unsupported content type {content_type!r}. Allowed: {sorted(allowed)}"
+            )
+
+        if not image_bytes:
+            raise ValidationError("Empty image file uploaded.")
+
+        # Save file (reuse autocat's helper — same storage layout)
+        old_url = product.image_url
+        new_url = _save_uploaded_image(image_bytes)
+        product.image_url = new_url
+
+        db.commit()
+        db.refresh(product)
+
+        # Publish update event (best-effort)
+        try:
+            event = ProductUpdatedEvent(product_id=product.id, changed_fields=["image_url"])
+            await producer.publish("product.updated", event, key=str(product.id))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "product_image_update_publish_failed",
+                product_id=product.id,
+                error=str(exc),
+            )
+
+        logger.info(
+            "product_image_updated",
+            product_id=product.id,
+            old_url=old_url,
+            new_url=new_url,
+        )
+        return product

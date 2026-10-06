@@ -56,6 +56,16 @@ export const adminProductsApi = {
     return api.upload<AutoCategorizeResponse>("/admin/products/upload", form);
   },
 
+    /** Upload a new image for an existing product */
+  uploadProductImage: (id: number, image: File) => {
+    const form = new FormData();
+    form.append("image", image);
+    return api.upload<ProductReadWithReview>(
+      `/admin/products/${id}/image`,
+      form,
+    );
+  },
+
   // ══════════════════════════════════════════════════════════════
   // Review workflow
   // ══════════════════════════════════════════════════════════════

@@ -507,3 +507,54 @@ async def upload_and_categorize(
         outcome,
         settings_confidence_threshold=settings.model_confidence_threshold,
     )
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Update product image (upload) — separate from general update
+# ══════════════════════════════════════════════════════════════════════
+@router.post(
+    "/{product_id}/image",
+    response_model=ProductReadWithReview,
+    summary="Upload a new product image (replaces existing)",
+)
+async def update_product_image(
+    db: DbSession,
+    producer: ProducerDep,
+    _admin: CurrentAdmin,
+    product_id: int,
+    image: Annotated[
+        UploadFile,
+        File(description="Product image (jpg/png/webp, max 10MB)"),
+    ],
+) -> ProductReadWithReview:
+    """
+    Replace the product's image with an uploaded file.
+
+    - Validates content type (jpg/png/webp) and size (max 10MB)
+    - Saves to data/uploads/ (reused from autocat storage)
+    - Publishes product.updated event
+    """
+    # Validate
+    if image.content_type not in ALLOWED_CONTENT_TYPES:
+        raise ValidationError(
+            f"Unsupported content type {image.content_type!r}. "
+            f"Allowed: {sorted(ALLOWED_CONTENT_TYPES)}"
+        )
+    image_bytes = await image.read()
+    if not image_bytes:
+        raise ValidationError("Empty image file uploaded.")
+    if len(image_bytes) > MAX_UPLOAD_BYTES:
+        raise ValidationError(f"File too large ({len(image_bytes)} bytes, max {MAX_UPLOAD_BYTES}).")
+
+    product = await ProductService.update_image(
+        db,
+        producer,
+        product_id,
+        image_bytes=image_bytes,
+        content_type=image.content_type or "application/octet-stream",
+    )
+
+    # Eager-load category for response
+    stmt = select(Product).where(Product.id == product.id).options(selectinload(Product.category))
+    loaded = db.execute(stmt).scalar_one()
+    return ProductReadWithReview.model_validate(loaded)
