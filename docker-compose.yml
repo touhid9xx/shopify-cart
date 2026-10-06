@@ -6,13 +6,17 @@ services:
   # ═══════════════════════════════════════════════════════════════
   app:
     build:
-      context: ./backend            # ← CHANGED: from root
+      context: ./backend
       dockerfile: Dockerfile
     container_name: shopify-app
     restart: unless-stopped
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
+      - ./backend/.env.docker
     environment:
+      # Explicit overrides — highest precedence
       MYSQL_HOST: mysql
       MYSQL_PORT: "3306"
       MYSQL_USER: ${MYSQL_USER:-root}
@@ -24,7 +28,7 @@ services:
       APP_DEBUG: "false"
       APP_HOST: 0.0.0.0
       APP_PORT: "8000"
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-me-in-production}
     depends_on:
       mysql:
         condition: service_healthy
@@ -37,15 +41,17 @@ services:
       - ./backend/data/logs:/app/logs
     networks:
       - shopify
-
+    # NOTE: healthcheck is declared in backend/Dockerfile
 
   # ── Frontend (Next.js) ──
   frontend:
     build:
-      context: ./frontend           # ← CHANGED: from root
+      context: ./frontend
       dockerfile: Dockerfile
+      target: runner
       args:
         NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
+    image: shopify-cart-frontend:local
     container_name: shopify-frontend
     restart: unless-stopped
     ports:
@@ -54,12 +60,13 @@ services:
       BACKEND_INTERNAL_URL: http://app:8000
       NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
       NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
     depends_on:
       app:
         condition: service_healthy
     networks:
       - shopify
-
 
   # ---------------------------------------------------------------
   # MySQL 8
@@ -181,8 +188,4 @@ networks:
 
 volumes:
   mysql_data:
-    driver: local
-  app_uploads:
-    driver: local
-  app_logs:
     driver: local

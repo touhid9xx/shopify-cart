@@ -14,7 +14,7 @@ import statistics
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import TypedDict
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -37,12 +37,24 @@ logger = get_logger(__name__)
 # ══════════════════════════════════════════════════════════════════════
 # Tunable constants
 # ══════════════════════════════════════════════════════════════════════
-EXP_SMOOTHING_ALPHA = 0.3  # 0..1 — higher = more weight on recent days
+EXP_SMOOTHING_ALPHA = 0.3  # 0..1 - higher = more weight on recent days
 ANOMALY_Z_THRESHOLD = 2.0  # |z| above this is an anomaly
 ANOMALY_WINDOW = 7  # rolling window (days)
 LOW_STOCK_LOOKBACK = 7  # days to consider "recent" for stockout
 CATEGORY_TOP_N = 10  # top categories in summary
 EPSILON = 1e-6
+Z_SCORE_DISPLAY_CAP = 10.0  # cap |z| when rolling std is ~0
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Internal helpers
+# ══════════════════════════════════════════════════════════════════════
+class _ProductEntry(TypedDict):
+    """Aggregator entry for demand forecast (per product)."""
+
+    qty: int
+    threshold: int
+    product: Product
 
 
 class MLInsightsService:
@@ -218,7 +230,7 @@ class MLInsightsService:
         Compute demand forecast for products.
 
         Returns (items, total). Items are sorted by `days_of_stock` ascending
-        — most urgent first.
+        - most urgent first.
         """
         since = date.today() - timedelta(days=lookback_days - 1)
 
@@ -238,27 +250,31 @@ class MLInsightsService:
         for pid, sale_date, qty in sales_rows:
             sales_by_product[pid][sale_date] = qty
 
-        # Fetch inventory — skip products with no inventory
+        # Fetch inventory - skip products with no inventory
         inv_rows = db.execute(
             select(Inventory, Product).join(Product, Product.id == Inventory.product_id)
         ).all()
 
         # Aggregate inventory per product (sum across locations)
-        inv_by_product: dict[int, dict[str, Any]] = defaultdict(
-            lambda: {"qty": 0, "threshold": 0, "product": None}
-        )
+        inv_by_product: dict[int, _ProductEntry] = {}
         for inv, product_row in inv_rows:
-            entry = inv_by_product[product_row.id]
+            entry = inv_by_product.get(product_row.id)
+            if entry is None:
+                entry = _ProductEntry(
+                    qty=0,
+                    threshold=0,
+                    product=product_row,
+                )
+                inv_by_product[product_row.id] = entry
             entry["qty"] += inv.quantity
             # Use max threshold across locations (most conservative)
             entry["threshold"] = max(entry["threshold"], inv.low_stock_threshold)
-            entry["product"] = product_row
 
         # Build forecast rows
         forecasts: list[DemandForecastItem] = []
 
         for pid, entry in inv_by_product.items():
-            product: Product = entry["product"]
+            product = entry["product"]
             current_qty = entry["qty"]
             threshold = entry["threshold"]
 
@@ -342,11 +358,14 @@ class MLInsightsService:
           window = previous ANOMALY_WINDOW days of quantities
           mean   = mean(window)
           std    = std(window)
-          z      = (qty - mean) / (std + eps)
+          z      = (qty - mean) / (std + EPSILON)
 
         Flag if |z| > threshold.
 
-        Sorted by |z_score| descending — most unusual first.
+        Sorted by |z_score| descending - most unusual first.
+
+        Note: when rolling_std is 0 (constant baseline), z is mathematically
+        undefined. We cap |z| at Z_SCORE_DISPLAY_CAP to keep the display sane.
         """
         since = date.today() - timedelta(days=lookback_days - 1)
 
@@ -392,7 +411,12 @@ class MLInsightsService:
                 mean = statistics.mean(window)
                 std = statistics.pstdev(window) if len(window) > 1 else 0.0
 
-                z = (qty - mean) / (std + EPSILON)
+                # Cap z-score when std is ~0 (constant baseline)
+                raw_z = (qty - mean) / (std + EPSILON)
+                if abs(raw_z) > Z_SCORE_DISPLAY_CAP:
+                    z = Z_SCORE_DISPLAY_CAP if raw_z > 0 else -Z_SCORE_DISPLAY_CAP
+                else:
+                    z = raw_z
 
                 if abs(z) < z_threshold:
                     continue

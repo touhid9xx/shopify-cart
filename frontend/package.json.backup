@@ -2,21 +2,11 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@12.9.1",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "unrs-resolver",
-      "sharp",
-      "@tailwindcss/oxide",
-      "@parcel/watcher",
-      "esbuild"
-    ]
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "start": "next start",
+    "lint": "eslint"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -53,5 +43,6 @@
     "eslint-config-next": "16.3.7",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "pnpm@12.8.1"
 }

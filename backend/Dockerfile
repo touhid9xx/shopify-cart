@@ -2,7 +2,7 @@
 # syntax=docker/dockerfile:1.7
 
 # ═══════════════════════════════════════════════════════════════════
-# Stage 1 — Builder
+# Stage 1 — Builder (deps only, source NOT copied)
 # ═══════════════════════════════════════════════════════════════════
 FROM python:3.12-slim AS builder
 
@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-# Build tools
+# Build tools for native extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         gcc \
@@ -24,24 +24,47 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build
 
-# Copy metadata first — better layer caching
+# Metadata only — cached unless pyproject.toml changes
 COPY pyproject.toml README.md ./
 
-# Copy source so setuptools can find package
-COPY src/ ./src/
-
-# Create the venv we'll copy into runtime
+# Create venv early so its layer caches forever
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install the app (NOT editable) — this copies source into site-packages.
-# Use --no-cache-dir to keep the layer small.
-RUN pip install --upgrade pip wheel setuptools \
-    && pip install --no-cache-dir .
+RUN pip install --upgrade pip wheel setuptools
 
-# Install CPU-only torch AFTER the project install, overriding the torch
-# version that came from PyPI (cu124 wheels are ~2.5 GB; cpu wheels ~200 MB).
-RUN pip install --no-cache-dir --force-reinstall \
+# ── Runtime deps — mirror pyproject.toml [project.dependencies] ──
+RUN pip install --no-cache-dir \
+    "fastapi==0.115.5" \
+    "uvicorn[standard]>=0.32.0" \
+    "python-multipart>=0.0.12" \
+    "pydantic==2.9.2" \
+    "pydantic-settings>=2.6.0" \
+    "email-validator>=2.2.0" \
+    "sqlalchemy>=2.0.36" \
+    "alembic>=1.14.0" \
+    "pymysql>=1.1.1" \
+    "cryptography>=43.0.0" \
+    "pyjwt>=2.10.0" \
+    "passlib[argon2]>=1.7.4" \
+    "argon2-cffi>=23.1.0" \
+    "structlog>=24.4.0" \
+    "aiokafka>=0.12.0" \
+    "datasets>=3.1.0" \
+    "huggingface-hub>=0.27.0" \
+    "pillow>=11.0.0" \
+    "numpy>=2.1.0" \
+    "pandas>=2.2.0" \
+    "scikit-learn>=1.5.0" \
+    "matplotlib>=3.9.0" \
+    "mlflow>=2.19.0" \
+    "optuna>=4.1.0" \
+    "streamlit>=1.40.0" \
+    "httpx>=0.27.0" \
+    "requests>=2.32.0"
+
+# ── CPU-only torch (biggest download, most stable layer) ──
+RUN pip install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cpu \
     torch==2.6.0 torchvision==0.21.0
 
@@ -55,7 +78,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH" \
     PYTHONPATH="/app/src" \
-    APP_ENV=production \
     APP_HOST=0.0.0.0 \
     APP_PORT=8000
 
@@ -75,7 +97,7 @@ COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
 
-# Copy source (used by PYTHONPATH=/app/src)
+# ── SOURCE LAYERS LAST — only these invalidate on code edits ──
 COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser alembic/ ./alembic/
 COPY --chown=appuser:appuser alembic.ini ./
@@ -89,7 +111,8 @@ USER appuser
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+# ── Health check (single source of truth — no compose override) ──
+HEALTHCHECK --interval=15s --timeout=10s --start-period=60s --retries=5 \
     CMD curl -fsS --connect-timeout 3 --max-time 8 http://127.0.0.1:8000/health || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--"]

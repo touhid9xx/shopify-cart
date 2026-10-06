@@ -1,6 +1,13 @@
 """Async Kafka consumer with a background task loop.
 
 Milestone 0: consumes + logs. Real handlers are registered from Milestone 9.
+
+Startup behavior:
+  The broker may accept TCP connections before its consumer group coordinator
+  is ready. Subscribing during that window produces noisy errors like
+  "Group Coordinator Request failed: [Error 15] GroupCoordinatorNotAvailableError".
+  We poll the admin API first and only subscribe once the broker reports a
+  usable cluster.
 """
 
 from __future__ import annotations
@@ -12,6 +19,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from aiokafka import AIOKafkaConsumer
+from aiokafka.admin import AIOKafkaAdminClient
 from aiokafka.errors import KafkaConnectionError, KafkaError
 
 from shopify_cart.config import Settings
@@ -21,6 +29,65 @@ from shopify_cart.logging_config import get_logger
 logger = get_logger(__name__)
 
 Handler = Callable[[str, dict[str, Any]], Awaitable[None]]
+
+# Broker readiness tuning
+_READY_POLL_INTERVAL_SECONDS = 1.0
+_READY_TIMEOUT_SECONDS = 60.0
+
+
+async def wait_for_broker_ready(
+    bootstrap_servers: str,
+    *,
+    timeout: float = _READY_TIMEOUT_SECONDS,
+) -> bool:
+    """Poll Kafka until the broker is ready to accept client operations.
+
+    Returns True if the broker became ready, False on timeout. Never raises.
+
+    We use AIOKafkaAdminClient because it performs the same bootstrap
+    handshake as the consumer but without the group-coordinator dependency.
+    Once `list_topics()` succeeds, the cluster metadata is available and
+    the consumer's group join will succeed cleanly.
+    """
+    admin: AIOKafkaAdminClient | None = None
+    try:
+        admin = AIOKafkaAdminClient(
+            bootstrap_servers=bootstrap_servers,
+            request_timeout_ms=5000,
+        )
+        await admin.start()
+
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + timeout
+        last_exc: Exception | None = None
+
+        while loop.time() < deadline:
+            try:
+                await admin.list_topics()
+                logger.info("kafka_broker_ready", bootstrap=bootstrap_servers)
+                return True
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                await asyncio.sleep(_READY_POLL_INTERVAL_SECONDS)
+
+        logger.warning(
+            "kafka_broker_not_ready_timeout",
+            bootstrap=bootstrap_servers,
+            timeout_seconds=timeout,
+            last_error=str(last_exc) if last_exc else None,
+        )
+        return False
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "kafka_admin_client_unavailable",
+            bootstrap=bootstrap_servers,
+            error=str(exc),
+        )
+        return False
+    finally:
+        if admin is not None:
+            with contextlib.suppress(Exception):
+                await admin.close()
 
 
 class KafkaConsumer:
@@ -59,6 +126,22 @@ class KafkaConsumer:
             logger.warning("kafka_consumer_disabled")
             return
 
+        # ── Wait for the broker's group coordinator to be ready ──
+        # This eliminates the initial flood of
+        # "Group Coordinator Request failed" / "Topic not available"
+        # errors on first boot.
+        ready = await wait_for_broker_ready(
+            self._settings.kafka_bootstrap_servers,
+        )
+        if not ready:
+            self._connected = False
+            logger.warning(
+                "kafka_consumer_skipped",
+                reason="broker_not_ready",
+                hint="App will run without Kafka consumer.",
+            )
+            return
+
         try:
             self._consumer = AIOKafkaConsumer(
                 *self._topics,
@@ -68,7 +151,13 @@ class KafkaConsumer:
                 value_deserializer=lambda v: json.loads(v.decode("utf-8")),
                 auto_offset_reset="earliest",
                 enable_auto_commit=True,
-                request_timeout_ms=5000,
+                request_timeout_ms=10000,
+                # Give the group coordinator time to stabilize without
+                # spamming rebalance requests.
+                session_timeout_ms=30000,
+                heartbeat_interval_ms=10000,
+                # Slow down topic-metadata retries during auto-create.
+                metadata_max_age_ms=30000,
             )
             await self._consumer.start()
             self._connected = True
