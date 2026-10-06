@@ -481,3 +481,102 @@ export interface TopProduct {
   quantity: number;
   orders: number;
 }
+
+
+// ───── Admin ML Insights ─────
+export interface CategoryCount {
+  category_slug: string;
+  product_count: number;
+  avg_confidence: number;
+}
+
+export interface ConfidenceBucket {
+  range_label: string;
+  range_min: number;
+  range_max: number;
+  count: number;
+}
+
+export interface MLSummary {
+  total_products: number;
+  products_with_ml: number;
+  products_without_ml: number;
+  avg_confidence: number;
+  high_confidence_count: number;
+  medium_confidence_count: number;
+  low_confidence_count: number;
+  pending_review_count: number;
+  approved_count: number;
+  rejected_count: number;
+  approval_rate: number;
+  confidence_buckets: ConfidenceBucket[];
+  category_distribution: CategoryCount[];
+}
+
+// ───── Demand Forecast ─────
+export type ForecastTrend = "increasing" | "stable" | "decreasing";
+
+export interface DemandForecastItem {
+  product_id: number;
+  sku: string;
+  name: string;
+  image_url: string | null;
+  current_quantity: number;
+  low_stock_threshold: number;
+  avg_daily_demand: number;
+  forecast_7d: number;
+  forecast_30d: number;
+  days_of_stock: number | null;
+  will_stockout_7d: boolean;
+  trend: ForecastTrend;
+  units_sold_7d: number;
+  units_sold_30d: number;
+}
+
+export interface PaginatedDemandForecast {
+  items: DemandForecastItem[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
+
+export interface ListDemandForecastParams {
+  page?: number;
+  size?: number;
+  lookback_days?: number;
+  only_low_stock?: boolean;
+}
+
+// ───── Anomalies ─────
+export type AnomalyDirection = "spike" | "drop";
+export type AnomalySeverity = "high" | "medium" | "low";
+
+export interface AnomalyItem {
+  sales_date: string;
+  product_id: number;
+  sku: string;
+  name: string;
+  image_url: string | null;
+  quantity: number;
+  expected_quantity: number;
+  rolling_std: number;
+  z_score: number;
+  direction: AnomalyDirection;
+  severity: AnomalySeverity;
+}
+
+export interface PaginatedAnomalies {
+  items: AnomalyItem[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
+
+export interface ListAnomaliesParams {
+  page?: number;
+  size?: number;
+  lookback_days?: number;
+  z_threshold?: number;
+}
