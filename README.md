@@ -13,38 +13,7 @@
 [![Kafka](https://img.shields.io/badge/Kafka-7.6-231F20.svg)](https://kafka.apache.org/)
 [![MLflow](https://img.shields.io/badge/MLflow-2.19-0194E2.svg)](https://mlflow.org/)
 
-**🎬 [Watch demo](docs/demo.gif)** · **📸 [Screenshots](#-screenshots)** · **📖 [Docs](docs/)**
 
----
-
-## 📸 Screenshots
-
-### Customer experience
-
-| Landing | Products | Cart |
-|---------|----------|------|
-| ![Landing](docs/screenshots/01-landing.png) | ![Products](docs/screenshots/02-products.png) | ![Cart](docs/screenshots/04-cart.png) |
-
-| Product detail | Checkout | Orders |
-|---------------|----------|--------|
-| ![Product detail](docs/screenshots/03-product-detail.png) | ![Checkout](docs/screenshots/05-checkout.png) | ![Orders](docs/screenshots/06-orders.png) |
-
-### Admin experience
-
-| Dashboard | ML upload & classify | Review queue |
-|-----------|---------------------|--------------|
-| ![Admin dashboard](docs/screenshots/07-admin-dashboard.png) | ![ML upload](docs/screenshots/08-admin-upload-ml.png) | ![Review queue](docs/screenshots/09-admin-review.png) |
-
-| ML Insights | Inventory |
-|-------------|-----------|
-| ![ML Insights](docs/screenshots/10-admin-ml-insights.png) | ![Inventory](docs/screenshots/11-admin-inventory.png) |
-
-### MLflow tracking
-
-![MLflow experiments](docs/screenshots/12-mlflow.png)
-_Training runs, hyperparameters, metrics — all tracked._
-
----
 
 ## ✨ Highlights
 
