@@ -1,3 +1,5 @@
+# location: backend/.gitignore
+
 # Python
 __pycache__/
 *.py[cod]

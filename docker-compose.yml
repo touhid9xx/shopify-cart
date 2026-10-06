@@ -14,7 +14,7 @@ services:
       - "8000:8000"
     env_file:
       - ./backend/.env
-      - ./backend/.env.docker
+      - ./backend/.env.docker.example
     environment:
       # Explicit overrides — highest precedence
       MYSQL_HOST: mysql

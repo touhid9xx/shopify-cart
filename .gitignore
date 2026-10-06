@@ -1,0 +1,225 @@
+# ═══════════════════════════════════════════════════════════════
+#  Shopify Cart — Unified .gitignore
+#  Covers backend (Python), frontend (Node/Next.js), ML artifacts,
+#  Docker, IDE, OS, secrets.
+#
+#  ⚠️  NEVER commit .env files, secrets, credentials, or API keys.
+# ═══════════════════════════════════════════════════════════════
+
+
+# ───────────────────────────────────────────────────────────────
+# 🔐 SECRETS & CREDENTIALS (highest priority — never leak)
+# ───────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.env
+secrets.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+credentials.json
+serviceAccountKey.json
+
+
+# ───────────────────────────────────────────────────────────────
+# 🐍 PYTHON (backend)
+# ───────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+.python-version
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Type checking & lint caches
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+.pytype/
+
+
+# ───────────────────────────────────────────────────────────────
+# ⚛️  NODE / NEXT.JS (frontend)
+# ───────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Frontend build
+frontend/build/
+frontend/coverage/
+frontend/.turbo/
+
+# TypeScript
+*.tsbuildinfo
+
+# Vercel
+.vercel
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+
+# ───────────────────────────────────────────────────────────────
+# 🤖 ML ARTIFACTS (models, runs, datasets)
+# ───────────────────────────────────────────────────────────────
+mlruns/
+mlartifacts/
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.h5
+*.pb
+*.tflite
+
+# Data directories — keep structure, ignore contents
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/uploads/*
+!data/uploads/.gitkeep
+
+# Note: data/uploads/* might be referenced in docker-compose volumes.
+# Keep the directory but ignore the files.
+
+
+# ───────────────────────────────────────────────────────────────
+# 🐳 DOCKER
+# ───────────────────────────────────────────────────────────────
+*.pid
+
+
+
+# ───────────────────────────────────────────────────────────────
+# 📝 LOGS
+# ───────────────────────────────────────────────────────────────
+*.log
+logs/
+*.log.*
+
+
+# ───────────────────────────────────────────────────────────────
+# 🧪 TEST DEBUG OUTPUTS
+# ───────────────────────────────────────────────────────────────
+test_output*.txt
+*.test-output
+explore_output*.txt
+*.sql
+*.csv
+!seed-data/*.csv
+
+
+# ───────────────────────────────────────────────────────────────
+# 💻 IDE / EDITORS
+# ───────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+
+# ───────────────────────────────────────────────────────────────
+# 📓 JUPYTER
+# ───────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+
+# ───────────────────────────────────────────────────────────────
+# 💻 OS-SPECIFIC
+# ───────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+
+# ───────────────────────────────────────────────────────────────
+# 🏗️  BUILD / DIST (misc)
+# ───────────────────────────────────────────────────────────────
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+coverage.xml
+*.lcov
+
+
+# ───────────────────────────────────────────────────────────────
+# ⚠️  .yml / .yaml (with important exceptions)
+# ───────────────────────────────────────────────────────────────
+# Ignore all YAML by default (often contains local config / secrets)
+*.yml
+*.yaml
+
+# Exceptions — always commit these
+!.github/workflows/*.yml
+!.github/workflows/*.yaml
+!.pre-commit-config.yaml
+!docker-compose.yml
+!docker-compose.*.yml
+!**/.env.example
+!frontend/pnpm-workspace.yaml
+!backend/pyproject.toml
+
+
+# ───────────────────────────────────────────────────────────────
+# 🎨 TEMP / SCRATCH
+# ───────────────────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.rej
