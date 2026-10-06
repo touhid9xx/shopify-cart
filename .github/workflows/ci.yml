@@ -1,10 +1,21 @@
+# location: .github/workflows/ci.yml
 name: CI
 
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
   workflow_dispatch:
 
 concurrency:
@@ -41,7 +52,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./backend    # ← IMPORTANT
+        working-directory: ./backend
 
     steps:
       - name: Checkout repository
@@ -72,7 +83,7 @@ jobs:
       - name: Mypy (strict)
         run: mypy src
 
-      - name: Pytest
+      - name: Pytest with coverage
         env:
           APP_ENV: test
           APP_DEBUG: "false"
@@ -84,7 +95,19 @@ jobs:
           MYSQL_USER: shopify
           MYSQL_PASSWORD: shopify
           MYSQL_DB: shopify_cart
-        run: pytest -v --maxfail=1
+        run: |
+          pytest -v --maxfail=1 \
+            --cov=shopify_cart \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          retention-days: 7
 
   frontend:
     name: Frontend — Type-check, Lint, Build
@@ -93,7 +116,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./frontend   # ← IMPORTANT
+        working-directory: ./frontend
 
     steps:
       - name: Checkout repository
